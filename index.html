@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Телепат - Студия</title>
+    <style>
+        :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --accent: #ff4d4d; --border: #3d3d3d; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; transition: 0.3s; }
+        
+        .app-container { background: var(--panel); width: 750px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--border); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: all 0.3s ease; z-index: 100; display: flex; flex-direction: column; }
+        .app-container.hidden { opacity: 0; pointer-events: none; transform: scale(0.9) translate(-50%, -50%); }
+        
+        /* Zen Mode (Режим Инкогнито) */
+        .app-container.zen { width: 100vw; height: 100vh; border-radius: 0; top: 0; left: 0; transform: none; border: none; padding: 30px; box-sizing: border-box; }
+        .app-container.zen .header, .app-container.zen .toolbar, .app-container.zen .actions-row { display: none; }
+        .app-container.zen textarea { height: calc(100vh - 60px); font-size: 22px; line-height: 1.8; }
+
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+        .header h1 { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .header-controls { display: flex; gap: 10px; align-items: center; }
+        .header button { background: none; border: none; color: #888; font-size: 20px; cursor: pointer; transition: 0.2s; }
+        .header button:hover { color: #fff; }
+        .counter-box { background: #111; padding: 5px 10px; border-radius: 10px; font-size: 12px; color: #4caf50; border: 1px solid #333; font-weight: bold; }
+
+        /* Панель инструментов */
+        .toolbar { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; background: #222; padding: 8px; border-radius: 10px; }
+        .toolbar input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #444; background: #111; color: #fff; outline: none; }
+        .toolbar button { padding: 8px 12px; border-radius: 6px; border: none; background: #444; color: #fff; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 13px;}
+        .toolbar button:hover { background: #555; }
+
+        /* Поле ввода */
+        textarea { width: 100%; height: 350px; padding: 15px; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--border); background: #1e1e1e; color: #fff; font-size: 16px; resize: none; margin-bottom: 10px; outline: none; line-height: 1.6; transition: 0.3s; font-family: 'Georgia', serif; }
+        
+        .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 13px; color: #888; }
+        .save-status { color: #4caf50; transition: 0.3s; }
+        
+        /* Кнопки действий */
+        .actions-row { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .action-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #444; background: #333; color: #ccc; font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 5px; min-width: 100px; }
+        .action-btn:hover { background: #444; color: #fff; }
+        .clean-btn { background: #2c3e50; color: #fff; border-color: #34495e; }
+        .speak-btn { background: #27ae60; color: #fff; border-color: #2ecc71; }
+        .speak-btn:hover { background: #2ecc71; }
+        .speak-btn.speaking { background: #e74c3c; border-color: #c0392b; animation: pulse 1.5s infinite; }
+        
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; color: white; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .btn-start { background-color: var(--accent); box-shadow: 0 4px 15px rgba(255, 77, 77, 0.3); }
+        .btn-stop { background-color: #dc3545; animation: pulse 1.5s infinite; }
+        .btn:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; }
+        
+        .status { text-align: center; margin-top: 10px; font-size: 13px; color: #4caf50; min-height: 18px; }
+        .status.error { color: #ff4d4d; }
+        .status.loading { color: #ffa500; }
+        
+        #floatingWidget { position: fixed; top: 20px; left: 20px; width: 60px; height: 60px; background: var(--accent); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: grab; box-shadow: 0 4px 15px rgba(255, 77, 77, 0.5); z-index: 1000; transition: transform 0.2s, background 0.3s; user-select: none; }
+        #floatingWidget:active { cursor: grabbing; transform: scale(0.95); }
+        #floatingWidget.listening { background: #dc3545; animation: pulse 1.5s infinite; }
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
+        .modal { background: var(--panel); padding: 25px; border-radius: 20px; text-align: center; max-width: 350px; border: 1px solid var(--accent); }
+        .modal h2 { color: var(--accent); margin-top: 0; font-size: 20px; }
+        .pay-btn { background-color: #0088cc; margin-top: 10px; }
+        
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
+    </style>
+    <script type="module">
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+        env.allowLocalModels = false;
+        
+        // Элементы
+        const output = document.getElementById('output');
+        const charCount = document.getElementById('charCount');
+        const wordCount = document.getElementById('wordCount');
+        const saveStatus = document.getElementById('saveStatus');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const status = document.getElementById('status');
+        const counterBox = document.getElementById('counterBox');
+        const payModal = document.getElementById('payModal');
+        const appContainer = document.querySelector('.app-container');
+        const floatingWidget = document.getElementById('floatingWidget');
+        const searchInput = document.getElementById('searchInput');
+        const speakBtn = document.getElementById('speakBtn');
+
+        const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+
+        // === 1. СТАТИСТИКА ===
+        function updateStats() {
+            const text = output.value;
+            charCount.textContent = `${formatNumber(text.length)} / 5 000 000 символов`;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            wordCount.textContent = `${formatNumber(words)} слов`;
+        }
+        output.addEventListener('input', updateStats);
+
+        // === 2. БЕЗОПАСНОСТЬ (АВТОСОХРАНЕНИЕ) ===
+        setInterval(() => {
+            if (output.value) {
+                localStorage.setItem('telepat_draft', output.value);
+                saveStatus.textContent = "Черновик сохранен ✓";
+                setTimeout(() => saveStatus.textContent = "Автосохранение включено", 2000);
+            }
+        }, 5000);
+
+        window.addEventListener('load', () => {
+            const draft = localStorage.getItem('telepat_draft');
+            if (draft) {
+                output.value = draft;
+                updateStats();
+            }
+        });
+
+        // === 3. ПОИСК ===
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const query = searchInput.value;
+                if (!query) return;
+                const index = output.value.toLowerCase().indexOf(query.toLowerCase());
+                if (index !== -1) {
+                    output.focus();
+                    output.setSelectionRange(index, index + query.length);
+                    const linesBefore = output.value.substring(0, index).split('\n').length;
+                    output.scrollTop = (linesBefore - 1) * 24; 
+                } else {
+                    alert('Текст не найден');
+                }
+            }
+        });
+
+        // === 4. ГОЛОСОВЫЕ КОМАНДЫ ===
+        function processVoiceText(text) {
+            if (text.toLowerCase().includes('удалить последнее слово')) {
+                text = text.replace(/удалить последнее слово/gi, '');
+                let current = output.value.trimEnd();
+                current = current.substring(0, current.lastIndexOf(' '));
+                output.value = current + (current ? " " : "");
+            }
+            text = text.replace(/ новая глава/gi, '\n\n=== НОВАЯ ГЛАВА ===\n\n');
+            text = text.replace(/ абзац/gi, '\n\n');
+
+            if (text.trim()) {
+                text = text.trim();
+                text = text.charAt(0).toUpperCase() + text.slice(1);
+                if (output.value && !output.value.endsWith('\n') && !text.startsWith('\n')) {
+                    output.value += ' ';
+                }
+                output.value += text;
+                output.scrollTop = output.scrollHeight;
+                updateStats();
+            }
+        }
+
+        // === 5. ОБРАТНАЯ ТРАНСКРИБАЦИЯ (TEXT-TO-SPEECH) ===
+        let isSpeaking = false;
+
+        speakBtn.addEventListener('click', () => {
+            if (!output.value) return;
+
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+                speakBtn.textContent = '🔊 Озвучить';
+                speakBtn.classList.remove('speaking');
+                status.textContent = "Озвучка остановлена";
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(output.value);
+            utterance.lang = 'ru-RU'; // Русский язык
+            utterance.rate = 1.0; // Скорость (1.0 - нормальная)
+
+            // Ищем русский голос в системе
+            const voices = window.speechSynthesis.getVoices();
+            const ruVoice = voices.find(voice => voice.lang === 'ru-RU' || voice.lang === 'ru_RU');
+            if (ruVoice) utterance.voice = ruVoice;
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                speakBtn.textContent = '🔊 Озвучить';
+                speakBtn.classList.remove('speaking');
+                status.textContent = "Озвучка завершена";
+            };
+
+            window.speechSynthesis.speak(utterance);
+            speakBtn.textContent = '⏹ Стоп';
+            speakBtn.classList.add('speaking');
+            status.textContent = "🔊 Читаю текст...";
+            isSpeaking = true;
+        });
+
+        // === 6. ЭКСПОРТ И СКАЧИВАНИЕ ===
+        document.getElementById('exportWordBtn').addEventListener('click', () => {
+            if (!output.value) return;
+            const html = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset='utf-8'></head>
+                <body style="font-family: 'Times New Roman', serif; font-size: 14pt;">${output.value.replace(/\n/g, '<br>')}</body></html>
+            `;
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const date = new Date();
+            a.download = `Телепат_Документ_${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (!output.value) return;
+            const blob = new Blob([output.value], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            const date = new Date();
+            a.download = `Телепат_${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            if (!output.value) return;
+            output.select();
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            const originalText = document.getElementById('copyBtn').textContent;
+            document.getElementById('copyBtn').textContent = '✅ Скопировано!';
+            setTimeout(() => document.getElementById('copyBtn').textContent = originalText, 2000);
+        });
+
+        document.getElementById('cleanBtn').addEventListener('click', () => {
+            if (!output.value) return;
+            let text = output.value;
+            text = text.replace(/ {2,}/g, ' '); 
+            text = text.replace(/\s+([.,!?;:])/g, '$1'); 
+            text = text.replace(/([.,!?;:])([^\s\n])/g, '$1 $2'); 
+            text = text.replace(/([.!?]\s+)([а-яa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase()); 
+            text = text.trim();
+            if (text.length > 0) text = text.charAt(0).toUpperCase() + text.slice(1);
+            output.value = text;
+            updateStats();
+            status.className = 'status'; status.textContent = "Текст очищен! ✨";
+            setTimeout(() => { if(status.textContent.includes("очищен")) status.textContent = "Готов к работе!"; }, 2000);
+        });
+
+        // === 7. РЕЖИМ ИНКОГНИТО (ZEN) ===
+        document.getElementById('zenBtn').addEventListener('click', () => {
+            appContainer.classList.toggle('zen');
+        });
+
+        // === 8. ЗАКЛАДКИ ===
+        document.getElementById('bookmarkBtn').addEventListener('click', () => {
+            const pos = output.selectionStart;
+            const textBefore = output.value.substring(0, pos);
+            const snippet = textBefore.substring(textBefore.length - 30).trim();
+            localStorage.setItem('telepat_bookmark', pos);
+            localStorage.setItem('telepat_bookmark_snippet', snippet);
+            status.className = 'status'; status.textContent = `Закладка добавлена: "...${snippet}"`;
+            setTimeout(() => { if(status.textContent.includes("Закладка")) status.textContent = "Готов к работе!"; }, 3000);
+        });
+
+        document.getElementById('goBookmarkBtn').addEventListener('click', () => {
+            const pos = parseInt(localStorage.getItem('telepat_bookmark'));
+            if (pos !== null && !isNaN(pos)) {
+                output.focus();
+                output.setSelectionRange(pos, pos);
+                const linesBefore = output.value.substring(0, pos).split('\n').length;
+                output.scrollTop = (linesBefore - 1) * 24;
+            } else {
+                alert('Закладок пока нет.');
+            }
+        });
+
+        // === ВИДЖЕТ ===
+        let isDragging = false; let offsetX, offsetY; let currentSize = 60;
+        floatingWidget.addEventListener('mousedown', (e) => { isDragging = false; offsetX = e.clientX - floatingWidget.getBoundingClientRect().left; offsetY = e.clientY - floatingWidget.getBoundingClientRect().top; document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp); });
+        function onMouseMove(e) { isDragging = true; floatingWidget.style.left = `${e.clientX - offsetX}px`; floatingWidget.style.top = `${e.clientY - offsetY}px`; }
+        function onMouseUp() { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); }
+        floatingWidget.addEventListener('wheel', (e) => { e.preventDefault(); if (e.deltaY < 0) { if (currentSize < 160) currentSize += 10; } else { if (currentSize > 40) currentSize -= 10; } floatingWidget.style.width = `${currentSize}px`; floatingWidget.style.height = `${currentSize}px`; floatingWidget.style.fontSize = `${currentSize * 0.5}px`; }, { passive: false });
+        floatingWidget.addEventListener('click', (e) => { if (!isDragging) { appContainer.classList.toggle('hidden'); } });
+        document.getElementById('closeBtn').addEventListener('click', () => { appContainer.classList.add('hidden'); });
+
+        // === ПОДПИСКА ===
+        let firstUseDate = parseInt(localStorage.getItem('telepat_first_use') || '0');
+        let subEndTime = parseInt(localStorage.getItem('telepat_sub_end') || '0');
+        const trialMs = 30 * 24 * 60 * 60 * 1000;
+        function checkSubscription() {
+            const now = Date.now(); const isSubscribed = subEndTime > now;
+            if (isSubscribed) { counterBox.textContent = `Подписка до: ${new Date(subEndTime).toLocaleDateString()}`; counterBox.style.color = '#0088cc'; toggleBtn.disabled = false; } 
+            else if (firstUseDate === 0) { counterBox.textContent = `Пробный период: 30 дней`; counterBox.style.color = '#4caf50'; toggleBtn.disabled = false; } 
+            else { const daysLeft = Math.ceil((trialMs - (now - firstUseDate)) / (1000 * 60 * 60 * 24)); if (daysLeft > 0) { counterBox.textContent = `Осталось дней: ${daysLeft}`; counterBox.style.color = '#4caf50'; toggleBtn.disabled = false; } else { counterBox.textContent = `Пробный период окончен`; counterBox.style.color = '#ff4d4d'; toggleBtn.disabled = true; payModal.style.display = 'flex'; } }
+        }
+        document.getElementById('payBtn').addEventListener('click', () => { subEndTime = Date.now() + trialMs; localStorage.setItem('telepat_sub_end', subEndTime); payModal.style.display = 'none'; alert('Оплата прошла успешно (Тест)!'); checkSubscription(); });
+
+        // === НЕЙРОСЕТЬ ===
+        let transcriber = null; let mediaRecorder; let audioChunks = []; let isRecording = false;
+        async function loadModel() {
+            status.className = 'status loading'; status.textContent = "Загрузка (~500 МБ)...";
+            try {
+                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-small', { quantized: true, progress_callback: (data) => { if (data.status === 'progress') status.textContent = `Загрузка: ${Math.round(data.progress)}%`; } });
+                status.className = 'status'; status.textContent = "Готов к работе!"; toggleBtn.disabled = false; toggleBtn.textContent = "Начать запись";
+            } catch (error) { status.textContent = "Ошибка: " + error.message; }
+        }
+
+        toggleBtn.addEventListener('click', async () => {
+            if (toggleBtn.disabled) return; 
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); mediaRecorder = new MediaRecorder(stream); audioChunks = [];
+                    mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                    mediaRecorder.onstop = async () => {
+                        status.className = 'status loading'; status.textContent = "Думаю над текстом...";
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' }); const arrayBuffer = await audioBlob.arrayBuffer(); const audioContext = new AudioContext({ sampleRate: 16000 }); const decodedAudio = await audioContext.decodeAudioData(arrayBuffer); const audioData = decodedAudio.getChannelData(0);
+                        let sum = 0; for (let i = 0; i < audioData.length; i++) sum += audioData[i] * audioData[i];
+                        if (Math.sqrt(sum / audioData.length) < 0.005) { status.className = 'status'; status.textContent = "Тишина."; toggleBtn.textContent = "Начать запись"; toggleBtn.className = "btn btn-start"; isRecording = false; floatingWidget.classList.remove('listening'); return; }
+                        
+                        const result = await transcriber(audioData, { language: 'russian', task: 'transcribe', condition_on_previous_text: false, no_repeat_ngram_size: 3, prompt: "Это текст на русском языке." });
+                        let text = result.text.trim().replace(/\[.*?\]/g, '').replace(/\b(\d+)(,\s*\1)+\b/g, '').trim();
+                        
+                        processVoiceText(text);
+                        status.className = 'status'; status.textContent = "Готово!";
+                        if (firstUseDate === 0) { firstUseDate = Date.now(); localStorage.setItem('telepat_first_use', firstUseDate); }
+                        checkSubscription();
+                        toggleBtn.textContent = "Начать запись"; toggleBtn.className = "btn btn-start"; toggleBtn.disabled = false; isRecording = false; floatingWidget.classList.remove('listening');
+                    };
+                    mediaRecorder.start(); isRecording = true; toggleBtn.textContent = "⏹ Остановить"; toggleBtn.className = "btn btn-stop"; status.textContent = "🔴 Слушаю..."; floatingWidget.classList.add('listening');
+                    if (!appContainer.classList.contains('zen')) appContainer.classList.add('hidden'); 
+                } catch (err) { status.textContent = "Ошибка: " + err.message; }
+            } else { mediaRecorder.stop(); isRecording = false; }
+        });
+
+        checkSubscription(); toggleBtn.disabled = true; toggleBtn.textContent = "Загрузка..."; loadModel();
+    </script>
+</head>
+<body>
+
+<div id="floatingWidget" title="Наведите и покрутите колесико">🧠</div>
+
+<div class="app-container hidden">
+    <div class="header">
+        <h1>🧠 Телепат Студия</h1>
+        <div class="header-controls">
+            <div class="counter-box" id="counterBox">Загрузка...</div>
+            <button id="zenBtn" title="Режим Инкогнито (Zen)">👁️</button>
+            <button id="closeBtn" title="Свернуть">✖</button>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <input type="text" id="searchInput" placeholder="Поиск по тексту (Enter)...">
+        <button id="bookmarkBtn" title="Запомнить место">📌 Закладка</button>
+        <button id="goBookmarkBtn" title="Перейти к закладке">↪️ К закладке</button>
+    </div>
+    
+    <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Говорите, вставляйте или пишите текст..."></textarea>
+    
+    <div class="info-row">
+        <div id="charCount">0 / 5 000 000 символов</div>
+        <div id="wordCount">0 слов</div>
+        <div class="save-status" id="saveStatus">Автосохранение включено</div>
+    </div>
+
+    <div class="actions-row">
+        <button class="action-btn clean-btn" id="cleanBtn">✨ Исправить</button>
+        <button class="action-btn speak-btn" id="speakBtn">🔊 Озвучить</button>
+        <button class="action-btn" id="copyBtn">📋 Копировать</button>
+        <button class="action-btn" id="downloadBtn">💾 .txt</button>
+        <button class="action-btn" id="exportWordBtn" style="color: #2b579a;">📄 Word</button>
+    </div>
+    
+    <button id="toggleBtn" class="btn btn-start" disabled>Загрузка...</button>
+    <div class="status" id="status">Инициализация...</div>
+</div>
+
+<div class="modal-overlay" id="payModal">
+    <div class="modal">
+        <h2>Пробный период закончен!</h2>
+        <p>Вы использовали 30 бесплатных дней. Оформите подписку за $10/мес.</p>
+        <button id="payBtn" class="btn pay-btn">Оплатить $10 (Тест)</button>
+    </div>
+</div>
+
+</body>
+</html>
