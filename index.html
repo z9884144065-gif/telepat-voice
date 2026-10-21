@@ -5,13 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Telepat Voice - Студия</title>
     
-    <!-- Подключаем библиотеку через надежный CDN -->
+    <!-- Подключаем библиотеку Piper TTS через надежный CDN jsDelivr -->
     <script type="module">
-        import { TtsSession } from 'https://cdn.jsdelivr.net/npm/@realtimex/piper-tts-web@1.1.1/+esm';
-        window.TtsSession = TtsSession;
+        import * as tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
+        window.tts = tts; // Делаем доступным глобально
+        console.log("Библиотека Piper TTS успешно загружена.");
     </script>
 
     <style>
+        /* ... (стили остаются без изменений) ... */
         :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --accent: #ff4d4d; --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222; }
         body.light-mode { --bg: #f4f4f9; --panel: #ffffff; --text: #333; --accent: #e74c3c; --border: #ccc; --input-bg: #fff; --stat-bg: #f9f9f9; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; overflow-x: hidden; transition: 0.3s; }
@@ -42,6 +44,7 @@
     </style>
     
     <script type="module">
+        // ... (код Whisper и статистики остается без изменений) ...
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
         env.allowLocalModels = false;
         
@@ -52,7 +55,6 @@
 
         const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 
-        // === ТЕМА И ШРИФТ ===
         document.getElementById('themeBtn').addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
             document.getElementById('themeBtn').textContent = document.body.classList.contains('light-mode') ? '🌙' : '☀️';
@@ -61,7 +63,6 @@
         document.getElementById('fontUp').addEventListener('click', () => { if(currentFont < fontSizes.length-1) currentFont++; output.style.fontSize = fontSizes[currentFont] + 'px'; });
         document.getElementById('fontDown').addEventListener('click', () => { if(currentFont > 0) currentFont--; output.style.fontSize = fontSizes[currentFont] + 'px'; });
 
-        // === СУПЕР-СТАТИСТИКА ===
         function updateStats() {
             const text = output.value;
             const words = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
@@ -84,11 +85,9 @@
         }
         output.addEventListener('input', updateStats);
 
-        // Автосохранение
         setInterval(() => { if (output.value) localStorage.setItem('telepat_draft', output.value); }, 5000);
         window.addEventListener('load', () => { const draft = localStorage.getItem('telepat_draft'); if (draft) { output.value = draft; updateStats(); } });
 
-        // === ОЧИСТКА ===
         document.getElementById('cleanBtn').addEventListener('click', () => {
             let text = output.value.replace(/ {2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])([^\s\n])/g, '$1 $2');
             text = text.replace(/([.!?]\s+)([а-яa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase()).trim();
@@ -96,7 +95,6 @@
             output.value = text; updateStats();
         });
 
-        // === КНОПКИ ЭКСПОРТА ===
         document.getElementById('copyBtn').addEventListener('click', () => { if(!output.value) return; output.select(); document.execCommand('copy'); window.getSelection().removeAllRanges(); });
         document.getElementById('downloadBtn').addEventListener('click', () => {
             if (!output.value) return;
@@ -126,21 +124,17 @@
             status.textContent = `Загрузка голоса (${selectedVoiceId})... Первый раз может занять 1-2 минуты.`;
 
             try {
-                if (!window.TtsSession) throw new Error("Библиотека TTS не загрузилась. Проверьте интернет.");
+                console.log("1. Начало озвучки. Проверка window.tts:", window.tts);
+                if (!window.tts) throw new Error("Библиотека TTS не загрузилась. Проверьте интернет.");
 
-                const baseHfUrl = `https://huggingface.co/rhasspy/piper-voices/resolve/main/ru/ru_RU/${selectedVoiceId}/medium/`;
-                const modelUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx`;
-                const configUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx.json`;
-
-                const session = new window.TtsSession({
+                // Вызываем predict напрямую из библиотеки @mintplex-labs/piper-tts-web
+                console.log("2. Вызов tts.predict для голоса:", selectedVoiceId);
+                const wav = await window.tts.predict({
+                    text: text,
                     voiceId: `ru_RU-${selectedVoiceId}-medium`,
-                    allowLocalModels: false, // Мы используем удаленные модели
-                    fallbackStrategy: 'cdn',
                 });
-                
-                status.textContent = 'Генерация звука... (пожалуйста, подождите)';
-                const wav = await session.predict(text);
-                
+                console.log("3. Аудио сгенерировано, размер:", wav.byteLength);
+
                 const blob = new Blob([wav], { type: 'audio/wav' });
                 const url = URL.createObjectURL(blob);
                 
@@ -149,10 +143,11 @@
                 currentAudio.play();
                 
                 isSpeaking = true; btn.textContent = '⏹ Стоп'; status.textContent = 'Воспроизведение...';
+                console.log("4. Воспроизведение начато.");
 
             } catch (error) {
                 console.error("ОШИБКА TTS:", error); 
-                alert("Ошибка озвучки:\n" + error.message);
+                alert("Ошибка озвучки:\n" + error.message + "\n\nПроверьте консоль (F12) для подробностей.");
                 status.textContent = 'Ошибка: ' + error.message;
                 btn.textContent = '🔊 Озвучить'; btn.classList.remove('speaking'); isSpeaking = false;
             }
@@ -191,7 +186,7 @@
     </script>
 </head>
 <body>
-
+<!-- ... (HTML-разметка остается без изменений) ... -->
 <div class="app-container">
     <div class="header">
         <h1>🎙️ Telepat Voice Студия</h1>
