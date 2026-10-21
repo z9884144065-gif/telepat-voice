@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Студия v4.0</title>
+    <title>Telepat Voice - Студия v4.1</title>
     
     <script type="module">
         import * as tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
@@ -16,7 +16,6 @@
         :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; overflow-x: hidden; }
         
-        /* Главный интерфейс (ПК) */
         .app-container { background: var(--panel); width: 100%; max-width: 900px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; flex-direction: column; box-sizing: border-box; }
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         .header h1 { font-size: 20px; margin: 0; color: #ff4d4d; }
@@ -50,10 +49,10 @@
         
         .status { text-align: center; margin-top: 10px; font-size: 14px; color: #4caf50; min-height: 20px; }
         
-        /* Прозрачные подсказки и окна */
         .has-tooltip { position: relative; }
         .has-tooltip::after { content: attr(data-tooltip); position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background: rgba(10, 10, 10, 0.6); backdrop-filter: blur(5px); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 9999; border: 1px solid rgba(255,255,255,0.2); }
         .has-tooltip:hover::after { opacity: 1; }
+        
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(3px); z-index: 2000; justify-content: center; align-items: center; }
         .modal { background: rgba(43, 43, 43, 0.85); backdrop-filter: blur(10px); padding: 30px; border-radius: 20px; text-align: center; max-width: 400px; border: 1px solid rgba(255,255,255,0.1); }
         .modal h2 { color: #ff4d4d; margin-top: 0; font-size: 22px; }
@@ -63,12 +62,17 @@
         .close-modal-btn { background: transparent; color: #aaa; border: 1px solid #555; padding: 10px 20px; border-radius: 8px; cursor: pointer; width: 100%; }
         #qrcode { display: flex; justify-content: center; margin: 20px 0; background: white; padding: 15px; border-radius: 10px; }
         
-        /* ИНТЕРФЕЙС ДЛЯ ТЕЛЕФОНА (Скрыт по умолчанию) */
+        /* Ссылка для ручного подключения */
+        .manual-link-box { background: #111; padding: 10px; border-radius: 8px; font-size: 12px; word-break: break-all; margin-top: 10px; border: 1px solid #444; display: none; }
+        .manual-link-box a { color: #2ecc71; text-decoration: none; }
+
+        /* ИНТЕРФЕЙС ДЛЯ ТЕЛЕФОНА */
         #phone-interface { display: none; background: var(--panel); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--border); text-align: center; box-sizing: border-box; }
         #phone-interface h2 { color: #2ecc71; }
         #phone-interface textarea { height: 200px; margin-bottom: 20px; }
         #phone-interface .btn-send { background: #2ecc71; font-size: 20px; }
-        #phone-status { margin-top: 15px; color: #2ecc71; font-weight: bold; }
+        #phone-status { margin-top: 15px; color: #ffa500; font-weight: bold; }
+        #phone-retry-btn { display: none; background: #e67e22; margin-top: 10px; font-size: 16px; padding: 10px; }
     </style>
     
     <script type="module">
@@ -84,29 +88,60 @@
         const translateModal = document.getElementById('translateModal');
         const qrcodeContainer = document.getElementById('qrcode');
 
-        // ==========================================
-        // ПРОВЕРКА: МЫ НА КОМПЬЮТЕРЕ ИЛИ НА ТЕЛЕФОНЕ?
-        // ==========================================
         const urlParams = new URLSearchParams(window.location.search);
         const connectId = urlParams.get('connect');
 
         if (connectId) {
-            // --- РЕЖИМ ТЕЛЕФОНА ---
+            // === РЕЖИМ ТЕЛЕФОНА ===
             document.querySelector('.app-container').style.display = 'none';
             document.getElementById('phone-interface').style.display = 'block';
             
-            const phonePeer = new Peer();
+            let phonePeer = null;
             let conn = null;
 
-            phonePeer.on('open', (id) => {
-                document.getElementById('phone-status').textContent = "Подключение к ПК...";
-                conn = phonePeer.connect(connectId);
-                
-                conn.on('open', () => {
-                    document.getElementById('phone-status').textContent = "✅ Подключено к ПК!";
-                    document.getElementById('phone-send-btn').disabled = false;
+            function connectToPC() {
+                document.getElementById('phone-status').textContent = "⏳ Подключение к ПК...";
+                document.getElementById('phone-send-btn').disabled = true;
+                document.getElementById('phone-retry-btn').style.display = 'none';
+
+                if (phonePeer) phonePeer.destroy();
+                phonePeer = new Peer();
+
+                phonePeer.on('open', (id) => {
+                    conn = phonePeer.connect(connectId);
+                    
+                    // Таймаут на случай, если связь не установится
+                    const timeout = setTimeout(() => {
+                        if (!conn.open) {
+                            document.getElementById('phone-status').textContent = "❌ Не удалось подключиться. Проверьте интернет или попробуйте снова.";
+                            document.getElementById('phone-retry-btn').style.display = 'block';
+                        }
+                    }, 5000);
+
+                    conn.on('open', () => {
+                        clearTimeout(timeout);
+                        document.getElementById('phone-status').textContent = "✅ Подключено к ПК!";
+                        document.getElementById('phone-status').style.color = "#2ecc71";
+                        document.getElementById('phone-send-btn').disabled = false;
+                        document.getElementById('phone-send-btn').textContent = "Отправить на ПК";
+                    });
+
+                    conn.on('error', (err) => {
+                        clearTimeout(timeout);
+                        document.getElementById('phone-status').textContent = "❌ Ошибка соединения: " + err.type;
+                        document.getElementById('phone-retry-btn').style.display = 'block';
+                    });
                 });
-            });
+
+                phonePeer.on('error', (err) => {
+                    document.getElementById('phone-status').textContent = "❌ Ошибка сети: " + err.type;
+                    document.getElementById('phone-retry-btn').style.display = 'block';
+                });
+            }
+
+            connectToPC(); // Запуск подключения
+
+            document.getElementById('phone-retry-btn').addEventListener('click', connectToPC);
 
             document.getElementById('phone-send-btn').addEventListener('click', () => {
                 const text = document.getElementById('phone-text').value;
@@ -118,8 +153,7 @@
             });
 
         } else {
-            // --- РЕЖИМ КОМПЬЮТЕРА (Основной код) ---
-            
+            // === РЕЖИМ КОМПЬЮТЕРА ===
             function updateSpeakTooltip() {
                 const selectedText = voiceSelect.options[voiceSelect.selectedIndex].text;
                 speakBtn.setAttribute('data-tooltip', `🔊 Озвучить текст голосом: ${selectedText}`);
@@ -155,11 +189,7 @@
                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
             });
 
-            // Переводчик
-            document.getElementById('translateBtn').addEventListener('click', () => {
-                if (!output.value) { alert("Сначала введите текст!"); return; }
-                translateModal.style.display = 'flex';
-            });
+            document.getElementById('translateBtn').addEventListener('click', () => { if (!output.value) { alert("Введите текст!"); return; } translateModal.style.display = 'flex'; });
             document.getElementById('doTranslateBtn').addEventListener('click', async () => {
                 const targetLang = document.getElementById('targetLang').value;
                 const btn = document.getElementById('doTranslateBtn');
@@ -176,11 +206,10 @@
             });
             document.getElementById('closeTranslateBtn').addEventListener('click', () => { translateModal.style.display = 'none'; });
 
-            // Озвучка
             let isSpeaking = false; let currentAudio = null;
             speakBtn.addEventListener('click', async () => {
                 const text = output.value;
-                if (!text || text.trim() === "") { alert("Сначала введите текст!"); return; }
+                if (!text || text.trim() === "") { alert("Введите текст!"); return; }
                 if (isSpeaking) {
                     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
                     isSpeaking = false; speakBtn.textContent = '🔊 Озвучить'; speakBtn.classList.remove('speaking');
@@ -201,7 +230,6 @@
                 } catch (error) { alert("Ошибка озвучки:\n" + error.message); speakBtn.textContent = '🔊 Озвучить'; isSpeaking = false; }
             });
 
-            // Запись Whisper
             let transcriber = null; let mediaRecorder; let audioChunks = []; let isRecording = false;
             async function loadModel() {
                 status.textContent = "Загрузка Whisper (~150 МБ)...";
@@ -234,15 +262,27 @@
             document.getElementById('connectPhoneBtn').addEventListener('click', () => {
                 qrModal.style.display = 'flex';
                 qrcodeContainer.innerHTML = '';
+                document.getElementById('manualLinkBox').style.display = 'none';
+                
                 const myPeerId = 'telepat-pc-' + Math.random().toString(36).substr(2, 6);
                 const currentUrl = window.location.origin + window.location.pathname;
                 const connectUrl = `${currentUrl}?connect=${myPeerId}`;
                 
                 new QRCode(qrcodeContainer, { text: connectUrl, width: 180, height: 180 });
+                
+                // Показываем прямую ссылку на всякий случай
+                document.getElementById('manualLinkBox').style.display = 'block';
+                document.getElementById('manualLink').href = connectUrl;
+                document.getElementById('manualLink').textContent = connectUrl;
+
                 if (peer) peer.destroy();
                 peer = new Peer(myPeerId);
 
+                // Показываем, что ждем подключения
+                status.textContent = "Ожидание подключения телефона...";
+
                 peer.on('connection', (conn) => {
+                    status.textContent = "Телефон подключен! Ожидание текста...";
                     conn.on('data', (data) => {
                         if (typeof data === 'string') {
                             output.value += (output.value ? "\n" : "") + data; updateStats();
@@ -263,19 +303,20 @@
 </head>
 <body>
 
-<!-- ЭКРАН ДЛЯ ТЕЛЕФОНА (Показывается только если отсканирован QR) -->
+<!-- ЭКРАН ДЛЯ ТЕЛЕФОНА -->
 <div id="phone-interface">
     <h2>📱 Отправка на ПК</h2>
     <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">Вставьте текст ниже и нажмите кнопку, чтобы он появился на компьютере.</p>
     <textarea id="phone-text" placeholder="Введите текст здесь..."></textarea>
     <button id="phone-send-btn" class="btn btn-send" disabled>⏳ Подключение...</button>
+    <button id="phone-retry-btn" class="btn">🔄 Попробовать снова</button>
     <div id="phone-status">Ожидание связи с ПК...</div>
 </div>
 
 <!-- ЭКРАН ДЛЯ КОМПЬЮТЕРА -->
 <div class="app-container">
     <div class="header">
-        <h1>🎙️ Telepat Voice Студия v4.0</h1>
+        <h1>🎙️ Telepat Voice Студия v4.1</h1>
         <div class="header-controls">
             <button class="icon-btn has-tooltip" id="themeBtn" data-tooltip="Сменить тему">☀️</button>
         </div>
@@ -283,17 +324,13 @@
 
     <div class="toolbar">
         <input type="text" id="searchInput" placeholder="Поиск по тексту...">
-        
         <select id="voiceSelect" class="has-tooltip" data-tooltip="Выберите голос для озвучки">
             <option value="irina">👩 Ирина (Женский)</option>
             <option value="denis">👨 Денис (Мужской)</option>
             <option value="dmitri">👨 Дмитрий (Мужской)</option>
             <option value="ruslan">👨 Руслан (Мужской)</option>
         </select>
-
-        <!-- Кнопка телефона (ПК) -->
-        <button class="icon-btn has-tooltip" id="connectPhoneBtn" data-tooltip="Показать QR-код для телефона" style="background-color: #2ecc71; color: white; border: none;">📱 Телефон</button>
-
+        <button class="icon-btn has-tooltip" id="connectPhoneBtn" data-tooltip="Показать QR-код" style="background-color: #2ecc71; color: white; border: none;">📱 Телефон</button>
         <input type="file" id="fileInput" accept="audio/*,video/*" style="display: none;">
         <button class="icon-btn has-tooltip" onclick="document.getElementById('fileInput').click()" data-tooltip="Загрузить файл">📁 Файл</button>
     </div>
@@ -323,7 +360,6 @@
         <button class="action-btn btn-orange has-tooltip" id="excelBtn" data-tooltip="Скачать для Excel">📊 В Excel</button>
         <button class="action-btn btn-purple has-tooltip" id="srtBtn" data-tooltip="Скачать субтитры">📺 Субтитры</button>
         <button class="action-btn btn-orange has-tooltip" id="pdfBtn" data-tooltip="Сохранить в PDF">📄 PDF</button>
-        
         <button class="action-btn btn-green speak-btn has-tooltip" id="speakBtn" data-tooltip="Загрузка...">🔊 Озвучить</button>
     </div>
     
@@ -331,7 +367,6 @@
     <div class="status" id="status">Инициализация...</div>
 </div>
 
-<!-- Окно перевода -->
 <div class="modal-overlay" id="translateModal">
     <div class="modal">
         <h2>🌐 Перевод текста</h2>
@@ -349,13 +384,16 @@
     </div>
 </div>
 
-<!-- Окно QR-кода -->
 <div class="modal-overlay" id="qrModal">
     <div class="modal">
         <h2>📱 Подключение телефона</h2>
-        <p>Наведите камеру телефона на QR-код. На телефоне откроется страница для отправки текста.</p>
+        <p>Наведите камеру телефона на QR-код. Если не работает, скопируйте ссылку ниже и откройте её на телефоне.</p>
         <div id="qrcode"></div>
-        <button class="close-modal-btn" id="closeQrBtn">Закрыть</button>
+        <div class="manual-link-box" id="manualLinkBox">
+            Ссылка для ручного ввода:<br>
+            <a id="manualLink" href="#" target="_blank"></a>
+        </div>
+        <button class="close-modal-btn" id="closeQrBtn" style="margin-top: 15px;">Закрыть</button>
     </div>
 </div>
 
