@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Студия v5.0 (Live)</title>
+    <title>Telepat Voice - Live</title>
     
     <script type="module">
         import * as tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
@@ -71,15 +71,11 @@
         #phone-interface textarea { height: 200px; margin-bottom: 20px; }
         #phone-interface .btn-send { background: #2ecc71; font-size: 20px; }
         #phone-status { margin-top: 15px; color: #ffa500; font-weight: bold; }
-        #phone-retry-btn { display: none; background: #e67e22; margin-top: 10px; font-size: 16px; padding: 10px; }
 
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
     </style>
     
     <script type="module">
-        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
-        env.allowLocalModels = false;
-        
         const output = document.getElementById('output');
         const toggleBtn = document.getElementById('toggleBtn');
         const status = document.getElementById('status');
@@ -96,46 +92,26 @@
             // === РЕЖИМ ТЕЛЕФОНА ===
             document.querySelector('.app-container').style.display = 'none';
             document.getElementById('phone-interface').style.display = 'block';
-            
-            let phonePeer = null; let conn = null;
-            function connectToPC() {
-                document.getElementById('phone-status').textContent = "⏳ Подключение к ПК...";
-                document.getElementById('phone-send-btn').disabled = true;
-                document.getElementById('phone-retry-btn').style.display = 'none';
-                if (phonePeer) phonePeer.destroy();
-                phonePeer = new Peer();
-                phonePeer.on('open', (id) => {
-                    conn = phonePeer.connect(connectId);
-                    const timeout = setTimeout(() => {
-                        if (!conn.open) {
-                            document.getElementById('phone-status').textContent = "❌ Ошибка подключения.";
-                            document.getElementById('phone-retry-btn').style.display = 'block';
+            let phonePeer = new Peer();
+            phonePeer.on('open', () => {
+                const conn = phonePeer.connect(connectId);
+                conn.on('open', () => {
+                    document.getElementById('phone-status').textContent = "✅ Подключено к ПК!";
+                    document.getElementById('phone-send-btn').disabled = false;
+                    document.getElementById('phone-send-btn').onclick = () => {
+                        const text = document.getElementById('phone-text').value;
+                        if (text && conn.open) {
+                            conn.send(text);
+                            document.getElementById('phone-status').textContent = "🚀 Отправлено!";
+                            document.getElementById('phone-text').value = '';
                         }
-                    }, 5000);
-                    conn.on('open', () => {
-                        clearTimeout(timeout);
-                        document.getElementById('phone-status').textContent = "✅ Подключено к ПК!";
-                        document.getElementById('phone-status').style.color = "#2ecc71";
-                        document.getElementById('phone-send-btn').disabled = false;
-                        document.getElementById('phone-send-btn').textContent = "Отправить на ПК";
-                    });
+                    };
                 });
-            }
-            connectToPC();
-            document.getElementById('phone-retry-btn').addEventListener('click', connectToPC);
-            document.getElementById('phone-send-btn').addEventListener('click', () => {
-                const text = document.getElementById('phone-text').value;
-                if (text && conn && conn.open) {
-                    conn.send(text);
-                    document.getElementById('phone-status').textContent = "🚀 Отправлено!";
-                    document.getElementById('phone-text').value = '';
-                }
             });
-
         } else {
             // === РЕЖИМ КОМПЬЮТЕРА ===
             
-            // === ЖИВАЯ ТРАНСКРИБАЦИЯ (Web Speech API) ===
+            // 1. ЖИВОЙ ГОЛОСОВОЙ ВВОД (Web Speech API)
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             let recognition = null;
             let isListening = false;
@@ -144,70 +120,76 @@
                 recognition = new SpeechRecognition();
                 recognition.lang = 'ru-RU';
                 recognition.continuous = true;
-                recognition.interimResults = true; // Показывать текст прямо во время речи
+                recognition.interimResults = true;
 
                 recognition.onstart = () => {
                     isListening = true;
-                    toggleBtn.textContent = "⏹ Выключить микрофон";
+                    toggleBtn.textContent = "⏹ Остановить микрофон";
                     toggleBtn.classList.add('listening');
-                    status.textContent = "🔴 Слушаю... Говорите!";
+                    status.textContent = "🔴 Микрофон включен. Говорите!";
                     status.style.color = "#ff4d4d";
                 };
 
                 recognition.onresult = (event) => {
-                    let interimTranscript = '';
                     let finalTranscript = '';
-
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript;
-                        } else {
-                            interimTranscript += event.results[i][0].transcript;
+                            finalTranscript += event.results[i][0].transcript + ' ';
                         }
                     }
-                    
-                    // Добавляем финальный текст в конец
                     if (finalTranscript) {
-                        output.value += (output.value ? " " : "") + finalTranscript;
+                        output.value += finalTranscript;
+                        output.scrollTop = output.scrollHeight;
                         updateStats();
                     }
-                    // Если нужно, можно выводить промежуточный текст, но обычно он просто мешает
                 };
 
                 recognition.onerror = (event) => {
-                    status.textContent = "Ошибка: " + event.error;
-                    status.style.color = "#ff4d4d";
                     if (event.error === 'not-allowed') {
-                        alert("Пожалуйста, разрешите доступ к микрофону в настройках браузера!");
+                        alert("РАЗРЕШИТЕ ДОСТУП К МИКРОФОНУ! Нажмите на замочек в адресной строке браузера.");
+                        stopListening();
                     }
                 };
 
+                // Если браузер сам остановил запись (из-за паузы), перезапускаем!
                 recognition.onend = () => {
-                    isListening = false;
-                    toggleBtn.textContent = "🎤 Включить микрофон";
-                    toggleBtn.classList.remove('listening');
-                    if (status.textContent.includes("Слушаю")) {
-                        status.textContent = "Готов к работе";
-                        status.style.color = "#4caf50";
+                    if (isListening) {
+                        recognition.start();
                     }
                 };
             } else {
                 toggleBtn.textContent = "Браузер не поддерживает";
                 toggleBtn.disabled = true;
-                status.textContent = "Используйте Chrome или Edge для живой записи.";
+                status.textContent = "Откройте сайт в Chrome или Edge";
+            }
+
+            function startListening() {
+                if (recognition) {
+                    output.value = ""; // Очищаем перед новой записью (по желанию)
+                    recognition.start();
+                }
+            }
+
+            function stopListening() {
+                if (recognition) {
+                    isListening = false;
+                    recognition.stop();
+                    toggleBtn.textContent = "🎤 Включить микрофон";
+                    toggleBtn.classList.remove('listening');
+                    status.textContent = "Готов к работе";
+                    status.style.color = "#4caf50";
+                }
             }
 
             toggleBtn.addEventListener('click', () => {
-                if (!recognition) return;
-                
                 if (isListening) {
-                    recognition.stop();
+                    stopListening();
                 } else {
-                    output.value = ""; // Очищаем поле перед новой записью (опционально)
-                    recognition.start();
+                    startListening();
                 }
             });
 
+            // 2. Остальной интерфейс
             function updateSpeakTooltip() {
                 const selectedText = voiceSelect.options[voiceSelect.selectedIndex].text;
                 speakBtn.setAttribute('data-tooltip', `🔊 Озвучить текст голосом: ${selectedText}`);
@@ -228,7 +210,6 @@
             }
             output.addEventListener('input', updateStats);
 
-            // Остальные кнопки (Исправить, Переводчик и т.д.)
             document.getElementById('cleanBtn').addEventListener('click', () => {
                 let text = output.value.replace(/ {2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])([^\s\n])/g, '$1 $2');
                 text = text.replace(/([.!?]\s+)([а-яa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase()).trim();
@@ -285,7 +266,6 @@
                 } catch (error) { alert("Ошибка озвучки:\n" + error.message); speakBtn.textContent = '🔊 Озвучить'; isSpeaking = false; }
             });
 
-            // Генератор QR-кода на ПК
             let peer = null;
             document.getElementById('connectPhoneBtn').addEventListener('click', () => {
                 qrModal.style.display = 'flex';
@@ -302,10 +282,8 @@
 
                 if (peer) peer.destroy();
                 peer = new Peer(myPeerId);
-                status.textContent = "Ожидание подключения телефона...";
 
                 peer.on('connection', (conn) => {
-                    status.textContent = "Телефон подключен! Ожидание текста...";
                     conn.on('data', (data) => {
                         if (typeof data === 'string') {
                             output.value += (output.value ? "\n" : "") + data; updateStats();
@@ -334,13 +312,12 @@
     <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">Вставьте текст ниже и нажмите кнопку, чтобы он появился на компьютере.</p>
     <textarea id="phone-text" placeholder="Введите текст здесь..."></textarea>
     <button id="phone-send-btn" class="btn btn-send" disabled>⏳ Подключение...</button>
-    <button id="phone-retry-btn" class="btn">🔄 Попробовать снова</button>
     <div id="phone-status">Ожидание связи с ПК...</div>
 </div>
 
 <div class="app-container">
     <div class="header">
-        <h1>🎙️ Telepat Voice Студия v5.0 (Live)</h1>
+        <h1>🎙️ Telepat Voice Live</h1>
         <div class="header-controls">
             <button class="icon-btn has-tooltip" id="themeBtn" data-tooltip="Сменить тему">☀️</button>
         </div>
@@ -359,7 +336,7 @@
         <button class="icon-btn has-tooltip" onclick="document.getElementById('fileInput').click()" data-tooltip="Загрузить файл">📁 Файл</button>
     </div>
     
-    <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Нажмите 'Включить микрофон' и говорите. Текст появится здесь мгновенно..."></textarea>
+    <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Нажмите 'Включить микрофон' и просто говорите. Текст будет появляться здесь сразу..."></textarea>
     
     <div class="stats-grid">
         <div class="stat-item"><span class="stat-label">Всего слов</span><span class="stat-value" id="statWords">0</span></div>
@@ -387,7 +364,8 @@
         <button class="action-btn btn-green speak-btn has-tooltip" id="speakBtn" data-tooltip="Загрузка...">🔊 Озвучить</button>
     </div>
     
-    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Нажмите, чтобы включить микрофон" disabled>Загрузка...</button>
+    <!-- Кнопка теперь называется "Включить микрофон" -->
+    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Нажмите один раз и просто говорите" disabled>Загрузка...</button>
     <div class="status" id="status">Инициализация...</div>
 </div>
 
