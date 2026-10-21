@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Live v5.4</title>
+    <title>Telepat Voice - Студия v6.0</title>
     
     <script type="module">
         import * as tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
@@ -76,6 +76,9 @@
     </style>
     
     <script type="module">
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+        env.allowLocalModels = false;
+        
         const output = document.getElementById('output');
         const toggleBtn = document.getElementById('toggleBtn');
         const status = document.getElementById('status');
@@ -110,93 +113,96 @@
             });
         } else {
             // === РЕЖИМ КОМПЬЮТЕРА ===
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            let recognition = null;
-            let isListening = false;
+            
+            // Загрузка Whisper
+            let transcriber = null; 
+            let mediaRecorder; 
+            let audioChunks = []; 
+            let isRecording = false;
 
-            if (SpeechRecognition) {
-                recognition = new SpeechRecognition();
-                recognition.lang = 'ru-RU';
-                recognition.continuous = true;
-                recognition.interimResults = true;
-
-                recognition.onstart = () => {
-                    isListening = true;
-                    toggleBtn.textContent = "⏹ Остановить микрофон";
-                    toggleBtn.classList.add('listening');
-                    status.textContent = "🔴 Микрофон включен. Говорите!";
-                    status.style.color = "#ff4d4d";
-                };
-
-                // ТИХАЯ ОБРАБОТКА ОШИБОК (без назойливых окон)
-                recognition.onerror = (event) => {
-                    console.log("Speech Error:", event.error);
-                    if (event.error === 'not-allowed') {
-                        alert("❌ Разрешите доступ к микрофону в настройках браузера (нажмите на замочек 🔒).");
-                        stopListening();
-                    } else if (event.error === 'network') {
-                        status.textContent = "⚠️ Сбой сети Google. Перезапуск...";
-                        status.style.color = "#ffa500";
-                        // Тихо перезапускаем через 2 секунды
-                    } else if (event.error === 'aborted' || event.error === 'no-speech') {
-                        // Игнорируем, если браузер просто сделал паузу
-                    }
-                };
-
-                recognition.onresult = (event) => {
-                    let finalTranscript = '';
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript + ' ';
-                        }
-                    }
-                    if (finalTranscript) {
-                        output.value += finalTranscript;
-                        output.scrollTop = output.scrollHeight;
-                        updateStats();
-                    }
-                };
-
-                recognition.onend = () => {
-                    if (isListening) {
-                        // Автоматический перезапуск через 2 секунды, если браузер оборвал связь
-                        setTimeout(() => {
-                            if (isListening) {
-                                try { recognition.start(); } catch(e) {}
-                            }
-                        }, 2000); 
-                    }
-                };
-            } else {
-                toggleBtn.textContent = "❌ Браузер не поддерживает";
-                toggleBtn.disabled = true;
-                alert("Откройте сайт в Google Chrome или Microsoft Edge.");
-            }
-
-            function startListening() {
-                if (recognition) {
-                    output.value = ""; 
-                    try {
-                        recognition.start();
-                    } catch (e) {}
-                }
-            }
-
-            function stopListening() {
-                if (recognition) {
-                    isListening = false;
-                    recognition.stop();
-                    toggleBtn.textContent = "🎤 Включить микрофон";
-                    toggleBtn.classList.remove('listening');
-                    status.textContent = "Готов к работе";
+            async function loadModel() {
+                status.textContent = "Загрузка локальной нейросети Whisper (~150 МБ)...";
+                status.style.color = "#ffa500";
+                try {
+                    transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', { 
+                        quantized: true, 
+                        progress_callback: (data) => { 
+                            if (data.status === 'progress') status.textContent = `Загрузка Whisper: ${Math.round(data.progress)}%`; 
+                        } 
+                    });
+                    status.textContent = "Готов к работе! Нажмите 'Начать запись'";
                     status.style.color = "#4caf50";
+                    toggleBtn.disabled = false;
+                    toggleBtn.textContent = "🎤 Начать запись";
+                } catch (error) { 
+                    status.textContent = "Ошибка: " + error.message; 
+                    status.style.color = "#ff4d4d";
                 }
             }
 
-            toggleBtn.addEventListener('click', () => {
-                if (isListening) stopListening(); else startListening();
+            // Логика кнопки записи
+            toggleBtn.addEventListener('click', async () => {
+                if (toggleBtn.disabled) return; 
+                
+                if (!isRecording) {
+                    // НАЧАЛО ЗАПИСИ
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
+                        mediaRecorder = new MediaRecorder(stream); 
+                        audioChunks = [];
+                        mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                        
+                        mediaRecorder.onstop = async () => {
+                            status.textContent = "Думаю над текстом... (пожалуйста, подождите)";
+                            status.style.color = "#ffa500";
+                            
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' }); 
+                            const arrayBuffer = await audioBlob.arrayBuffer(); 
+                            const audioContext = new AudioContext({ sampleRate: 16000 }); 
+                            const decodedAudio = await audioContext.decodeAudioData(arrayBuffer); 
+                            const audioData = decodedAudio.getChannelData(0);
+                            
+                            try {
+                                const result = await transcriber(audioData, { language: 'russian', task: 'transcribe' });
+                                let text = result.text.trim();
+                                if (text) { 
+                                    output.value += (output.value ? "\n" : "") + text; 
+                                    updateStats(); 
+                                }
+                                status.textContent = "Готово!"; 
+                                status.style.color = "#4caf50";
+                            } catch(e) {
+                                status.textContent = "Ошибка распознавания.";
+                                status.style.color = "#ff4d4d";
+                            }
+                            
+                            toggleBtn.textContent = "🎤 Начать запись"; 
+                            toggleBtn.classList.remove('listening'); 
+                            toggleBtn.disabled = false; 
+                            isRecording = false;
+                        };
+                        
+                        mediaRecorder.start(); 
+                        isRecording = true; 
+                        toggleBtn.textContent = "⏹ Остановить"; 
+                        toggleBtn.classList.add('listening'); 
+                        status.textContent = "🔴 Запись... Говорите!"; 
+                        status.style.color = "#ff4d4d";
+                        
+                    } catch (err) { 
+                        status.textContent = "Ошибка микрофона: " + err.message; 
+                        status.style.color = "#ff4d4d";
+                    }
+                } else {
+                    // ОСТАНОВКА ЗАПИСИ
+                    mediaRecorder.stop(); 
+                    isRecording = false; 
+                    toggleBtn.disabled = true; // Блокируем кнопку, пока думает
+                    toggleBtn.textContent = "⏳ Думаю...";
+                }
             });
 
+            // Остальной интерфейс
             function updateSpeakTooltip() {
                 const selectedText = voiceSelect.options[voiceSelect.selectedIndex].text;
                 speakBtn.setAttribute('data-tooltip', `🔊 Озвучить текст голосом: ${selectedText}`);
@@ -305,9 +311,10 @@
                 if (peer) { peer.destroy(); peer = null; }
             });
 
-            toggleBtn.textContent = "🎤 Включить микрофон";
-            toggleBtn.disabled = false;
-            status.textContent = "Готов к работе";
+            // Запускаем загрузку Whisper
+            toggleBtn.disabled = true; 
+            toggleBtn.textContent = "Загрузка..."; 
+            loadModel();
             updateStats();
         }
     </script>
@@ -324,7 +331,7 @@
 
 <div class="app-container">
     <div class="header">
-        <h1>🎙️ Telepat Voice Live v5.4</h1>
+        <h1>🎙️ Telepat Voice Студия v6.0</h1>
         <div class="header-controls">
             <button class="icon-btn has-tooltip" id="themeBtn" data-tooltip="Сменить тему">☀️</button>
         </div>
@@ -343,7 +350,7 @@
         <button class="icon-btn has-tooltip" onclick="document.getElementById('fileInput').click()" data-tooltip="Загрузить файл">📁 Файл</button>
     </div>
     
-    <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Нажмите 'Включить микрофон' и просто говорите. Текст будет появляться сразу..."></textarea>
+    <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Нажмите 'Начать запись', говорите, затем нажмите 'Остановить'."></textarea>
     
     <div class="stats-grid">
         <div class="stat-item"><span class="stat-label">Всего слов</span><span class="stat-value" id="statWords">0</span></div>
@@ -371,7 +378,7 @@
         <button class="action-btn btn-green speak-btn has-tooltip" id="speakBtn" data-tooltip="Загрузка...">🔊 Озвучить</button>
     </div>
     
-    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Нажмите один раз и просто говорите" disabled>Загрузка...</button>
+    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Нажмите, чтобы начать запись" disabled>Загрузка...</button>
     <div class="status" id="status">Инициализация...</div>
 </div>
 
