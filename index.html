@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Live</title>
+    <title>Telepat Voice - Live v5.2</title>
     
     <script type="module">
         import * as tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
@@ -48,7 +48,7 @@
         .btn:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; }
         .btn.listening { background-color: #e74c3c; animation: pulse 1.5s infinite; }
         
-        .status { text-align: center; margin-top: 10px; font-size: 14px; color: #4caf50; min-height: 20px; }
+        .status { text-align: center; margin-top: 10px; font-size: 15px; color: #4caf50; min-height: 20px; font-weight: bold; }
         
         .has-tooltip { position: relative; }
         .has-tooltip::after { content: attr(data-tooltip); position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background: rgba(10, 10, 10, 0.6); backdrop-filter: blur(5px); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 9999; border: 1px solid rgba(255,255,255,0.2); }
@@ -111,7 +111,6 @@
         } else {
             // === РЕЖИМ КОМПЬЮТЕРА ===
             
-            // 1. ЖИВОЙ ГОЛОСОВОЙ ВВОД (Web Speech API)
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             let recognition = null;
             let isListening = false;
@@ -130,6 +129,19 @@
                     status.style.color = "#ff4d4d";
                 };
 
+                // ВОТ ЗДЕСЬ МЫ ЛОВИМ ВСЕ ОШИБКИ
+                recognition.onerror = (event) => {
+                    console.error("Speech Error:", event.error);
+                    if (event.error === 'not-allowed') {
+                        alert("❌ ОШИБКА: Браузер заблокировал доступ к микрофону!\n\nНажмите на замочек 🔒 в адресной строке (слева от ссылки) и разрешите доступ к микрофону.");
+                    } else if (event.error === 'network') {
+                        alert("❌ ОШИБКА СЕТИ: Распознавание речи не может связаться с серверами Google.\n\nПопробуйте использовать VPN или другой браузер (Chrome).");
+                    } else {
+                        alert("⚠️ Ошибка распознавания: " + event.error);
+                    }
+                    stopListening();
+                };
+
                 recognition.onresult = (event) => {
                     let finalTranscript = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -144,29 +156,26 @@
                     }
                 };
 
-                recognition.onerror = (event) => {
-                    if (event.error === 'not-allowed') {
-                        alert("РАЗРЕШИТЕ ДОСТУП К МИКРОФОНУ! Нажмите на замочек в адресной строке браузера.");
-                        stopListening();
-                    }
-                };
-
-                // Если браузер сам остановил запись (из-за паузы), перезапускаем!
                 recognition.onend = () => {
+                    // Если мы не нажимали "Стоп", а браузер сам прервал запись, запускаем снова
                     if (isListening) {
-                        recognition.start();
+                        try { recognition.start(); } catch(e) {}
                     }
                 };
             } else {
-                toggleBtn.textContent = "Браузер не поддерживает";
+                toggleBtn.textContent = "❌ Браузер не поддерживает";
                 toggleBtn.disabled = true;
-                status.textContent = "Откройте сайт в Chrome или Edge";
+                alert("Ваш браузер не поддерживает голосовой ввод. Откройте сайт в Google Chrome или Microsoft Edge.");
             }
 
             function startListening() {
                 if (recognition) {
-                    output.value = ""; // Очищаем перед новой записью (по желанию)
-                    recognition.start();
+                    output.value = ""; 
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        alert("Не удалось запустить микрофон: " + e.message);
+                    }
                 }
             }
 
@@ -182,14 +191,9 @@
             }
 
             toggleBtn.addEventListener('click', () => {
-                if (isListening) {
-                    stopListening();
-                } else {
-                    startListening();
-                }
+                if (isListening) stopListening(); else startListening();
             });
 
-            // 2. Остальной интерфейс
             function updateSpeakTooltip() {
                 const selectedText = voiceSelect.options[voiceSelect.selectedIndex].text;
                 speakBtn.setAttribute('data-tooltip', `🔊 Озвучить текст голосом: ${selectedText}`);
@@ -300,7 +304,7 @@
 
             toggleBtn.textContent = "🎤 Включить микрофон";
             toggleBtn.disabled = false;
-            status.textContent = "Готов к работе (Онлайн)";
+            status.textContent = "Готов к работе";
             updateStats();
         }
     </script>
@@ -309,7 +313,7 @@
 
 <div id="phone-interface">
     <h2>📱 Отправка на ПК</h2>
-    <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">Вставьте текст ниже и нажмите кнопку, чтобы он появился на компьютере.</p>
+    <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">Вставьте текст ниже и нажмите кнопку.</p>
     <textarea id="phone-text" placeholder="Введите текст здесь..."></textarea>
     <button id="phone-send-btn" class="btn btn-send" disabled>⏳ Подключение...</button>
     <div id="phone-status">Ожидание связи с ПК...</div>
@@ -317,7 +321,7 @@
 
 <div class="app-container">
     <div class="header">
-        <h1>🎙️ Telepat Voice Live</h1>
+        <h1>🎙️ Telepat Voice Live v5.2</h1>
         <div class="header-controls">
             <button class="icon-btn has-tooltip" id="themeBtn" data-tooltip="Сменить тему">☀️</button>
         </div>
@@ -336,7 +340,7 @@
         <button class="icon-btn has-tooltip" onclick="document.getElementById('fileInput').click()" data-tooltip="Загрузить файл">📁 Файл</button>
     </div>
     
-    <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Нажмите 'Включить микрофон' и просто говорите. Текст будет появляться здесь сразу..."></textarea>
+    <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Нажмите 'Включить микрофон' и просто говорите. Текст будет появляться сразу..."></textarea>
     
     <div class="stats-grid">
         <div class="stat-item"><span class="stat-label">Всего слов</span><span class="stat-value" id="statWords">0</span></div>
@@ -364,7 +368,6 @@
         <button class="action-btn btn-green speak-btn has-tooltip" id="speakBtn" data-tooltip="Загрузка...">🔊 Озвучить</button>
     </div>
     
-    <!-- Кнопка теперь называется "Включить микрофон" -->
     <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Нажмите один раз и просто говорите" disabled>Загрузка...</button>
     <div class="status" id="status">Инициализация...</div>
 </div>
