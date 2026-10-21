@@ -3,73 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Студия</title>
+    <title>Telepat Voice - Студия v2.0</title>
     
     <!-- Подключаем библиотеку Piper TTS -->
     <script type="module">
         import * as tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
         window.tts = tts;
     </script>
-
-    <!-- Подключаем генератор QR-кодов -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <!-- Подключаем библиотеку для P2P связи (WebRTC) -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <style>
-        :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --accent: #ff4d4d; --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222; }
-        body.light-mode { --bg: #f4f4f9; --panel: #ffffff; --text: #333; --accent: #e74c3c; --border: #ccc; --input-bg: #fff; --stat-bg: #f9f9f9; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; overflow-x: hidden; transition: 0.3s; }
+        :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; overflow-x: hidden; }
         
         .app-container { background: var(--panel); width: 100%; max-width: 900px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; flex-direction: column; box-sizing: border-box; }
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-        .header h1 { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; color: var(--accent); }
-        .header-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        .icon-btn { background: none; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 14px; transition: 0.2s; }
-        .icon-btn:hover { background: var(--border); }
+        .header h1 { font-size: 20px; margin: 0; color: #ff4d4d; }
+        .header-controls { display: flex; gap: 8px; align-items: center; }
+        .icon-btn { background: #333; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; }
+        .icon-btn:hover { background: #444; }
         
         .toolbar { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; background: var(--stat-bg); padding: 10px; border-radius: 10px; flex-wrap: wrap; border: 1px solid var(--border); }
         .toolbar input[type="text"] { flex: 1; min-width: 150px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); outline: none; }
         .toolbar select { padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); outline: none; }
         
-        textarea { width: 100%; height: 250px; padding: 15px; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 16px; resize: vertical; margin-bottom: 15px; outline: none; line-height: 1.6; font-family: 'Georgia', serif; transition: 0.3s; }
+        textarea { width: 100%; height: 250px; padding: 15px; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 16px; resize: vertical; margin-bottom: 15px; outline: none; line-height: 1.6; }
         
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px; background: var(--stat-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border); }
         .stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
         .stat-item:last-child { border-bottom: none; }
         .stat-value { font-weight: bold; background: var(--input-bg); padding: 2px 8px; border-radius: 4px; }
         
+        /* Разноцветные кнопки */
         .actions-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-        .action-btn { flex: 1; min-width: 100px; padding: 10px 5px; border-radius: 8px; border: 1px solid var(--border); background: var(--stat-bg); color: var(--text); font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 5px; font-weight: bold; }
-        .action-btn:hover { filter: brightness(1.2); }
-        .primary-btn { background: var(--accent); color: white; border: none; }
-        .speak-btn.speaking { background: #e74c3c; color: white; animation: pulse 1.5s infinite; }
+        .action-btn { flex: 1; min-width: 100px; padding: 10px 5px; border-radius: 8px; border: none; color: white; font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 5px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .action-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
         
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; color: white; display: flex; justify-content: center; align-items: center; gap: 10px; background-color: var(--accent); }
-        .btn:disabled { background-color: #555; cursor: not-allowed; }
+        .btn-green { background: #2ecc71; }
+        .btn-blue { background: #3498db; }
+        .btn-purple { background: #9b59b6; }
+        .btn-orange { background: #e67e22; }
+        .btn-gray { background: #7f8c8d; }
+        
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; color: white; display: flex; justify-content: center; align-items: center; gap: 10px; background-color: #ff4d4d; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4); }
+        .btn:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; }
         
         .status { text-align: center; margin-top: 10px; font-size: 14px; color: #4caf50; min-height: 20px; }
         
-        /* Стили для всплывающих подсказок */
+        /* НАДЕЖНЫЕ ПОДСКАЗКИ */
         .has-tooltip { position: relative; }
         .has-tooltip::after {
-            content: attr(data-tooltip); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%) translateY(10px);
-            background: rgba(20, 20, 20, 0.95); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px;
-            font-family: 'Segoe UI', sans-serif; white-space: nowrap; opacity: 0; pointer-events: none;
-            transition: opacity 0.2s ease, transform 0.2s ease; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 1px solid #555;
+            content: attr(data-tooltip); 
+            position: absolute; 
+            bottom: 130%; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: #000; /* Черный фон для контраста */
+            color: #fff; 
+            padding: 8px 12px; 
+            border-radius: 6px; 
+            font-size: 12px; 
+            white-space: nowrap; 
+            opacity: 0; 
+            pointer-events: none; 
+            transition: opacity 0.2s; 
+            z-index: 9999; /* Чтобы точно был поверх всего */
+            border: 1px solid #555;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
-        .has-tooltip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .has-tooltip:hover::after { opacity: 1; }
 
-        /* Модальное окно для QR-кода */
+        /* Модальное окно */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
-        .modal { background: var(--panel); padding: 30px; border-radius: 20px; text-align: center; max-width: 400px; border: 1px solid var(--accent); box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
-        .modal h2 { color: var(--accent); margin-top: 0; font-size: 22px; }
+        .modal { background: var(--panel); padding: 30px; border-radius: 20px; text-align: center; max-width: 400px; border: 1px solid #ff4d4d; }
+        .modal h2 { color: #ff4d4d; margin-top: 0; font-size: 22px; }
         .modal p { color: #ccc; line-height: 1.5; margin-bottom: 20px; font-size: 14px; }
         #qrcode { display: flex; justify-content: center; margin: 20px 0; background: white; padding: 15px; border-radius: 10px; }
         .close-modal-btn { background: #333; color: white; border: 1px solid #555; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
-        
-        @media (max-width: 600px) { .actions-row { display: grid; grid-template-columns: 1fr 1fr; } .stats-grid { grid-template-columns: 1fr; } .has-tooltip::after { white-space: normal; width: 150px; text-align: center; } }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
     </style>
     
     <script type="module">
@@ -86,7 +97,6 @@
 
         const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 
-        // === ДИНАМИЧЕСКАЯ ПОДСКАЗКА ДЛЯ ОЗВУЧКИ ===
         function updateSpeakTooltip() {
             const selectedText = voiceSelect.options[voiceSelect.selectedIndex].text;
             speakBtn.setAttribute('data-tooltip', `🔊 Озвучить текст голосом: ${selectedText}`);
@@ -94,50 +104,28 @@
         voiceSelect.addEventListener('change', updateSpeakTooltip);
         updateSpeakTooltip();
 
-        // === ТЕМА И ШРИФТ ===
-        document.getElementById('themeBtn').addEventListener('click', () => {
-            document.body.classList.toggle('light-mode');
-            document.getElementById('themeBtn').textContent = document.body.classList.contains('light-mode') ? '🌙' : '☀️';
-        });
-        let fontSizes = [14, 16, 18, 22, 26]; let currentFont = 1;
-        document.getElementById('fontUp').addEventListener('click', () => { if(currentFont < fontSizes.length-1) currentFont++; output.style.fontSize = fontSizes[currentFont] + 'px'; });
-        document.getElementById('fontDown').addEventListener('click', () => { if(currentFont > 0) currentFont--; output.style.fontSize = fontSizes[currentFont] + 'px'; });
-
-        // === СУПЕР-СТАТИСТИКА ===
         function updateStats() {
             const text = output.value;
-            const words = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
-            const totalChars = text.length;
-            const spaces = (text.match(/ /g) || []).length;
-            const charsNoSpaces = text.replace(/\s/g, '').length;
-            const cyrillic = (text.match(/[а-яА-ЯёЁ]/g) || []).length;
-            const latin = (text.match(/[a-zA-Z]/g) || []).length;
-            const digits = (text.match(/[0-9]/g) || []).length;
-            const other = totalChars - (cyrillic + latin + digits + spaces);
-
-            document.getElementById('statWords').textContent = formatNumber(words);
-            document.getElementById('statChars').textContent = formatNumber(totalChars);
-            document.getElementById('statCharsNoSpaces').textContent = formatNumber(charsNoSpaces);
-            document.getElementById('statSpaces').textContent = formatNumber(spaces);
-            document.getElementById('statCyrillic').textContent = formatNumber(cyrillic);
-            document.getElementById('statLatin').textContent = formatNumber(latin);
-            document.getElementById('statDigits').textContent = formatNumber(digits);
-            document.getElementById('statOther').textContent = formatNumber(other);
+            document.getElementById('statWords').textContent = formatNumber(text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0);
+            document.getElementById('statChars').textContent = formatNumber(text.length);
+            document.getElementById('statCharsNoSpaces').textContent = formatNumber(text.replace(/\s/g, '').length);
+            document.getElementById('statSpaces').textContent = formatNumber((text.match(/ /g) || []).length);
+            document.getElementById('statCyrillic').textContent = formatNumber((text.match(/[а-яА-ЯёЁ]/g) || []).length);
+            document.getElementById('statLatin').textContent = formatNumber((text.match(/[a-zA-Z]/g) || []).length);
+            document.getElementById('statDigits').textContent = formatNumber((text.match(/[0-9]/g) || []).length);
+            document.getElementById('statOther').textContent = formatNumber(text.length - ((text.match(/[а-яА-ЯёЁ]/g) || []).length + (text.match(/[a-zA-Z]/g) || []).length + (text.match(/[0-9]/g) || []).length + (text.match(/ /g) || []).length));
         }
         output.addEventListener('input', updateStats);
 
-        // Автосохранение
-        setInterval(() => { if (output.value) localStorage.setItem('telepat_draft', output.value); }, 5000);
-        window.addEventListener('load', () => { const draft = localStorage.getItem('telepat_draft'); if (draft) { output.value = draft; updateStats(); } });
-
-        // === ОЧИСТКА И ЭКСПОРТ ===
         document.getElementById('cleanBtn').addEventListener('click', () => {
             let text = output.value.replace(/ {2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])([^\s\n])/g, '$1 $2');
             text = text.replace(/([.!?]\s+)([а-яa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase()).trim();
             if (text.length > 0) text = text.charAt(0).toUpperCase() + text.slice(1);
             output.value = text; updateStats();
         });
+        
         document.getElementById('copyBtn').addEventListener('click', () => { if(!output.value) return; output.select(); document.execCommand('copy'); window.getSelection().removeAllRanges(); });
+        
         document.getElementById('downloadBtn').addEventListener('click', () => {
             if (!output.value) return;
             const blob = new Blob([output.value], { type: 'text/plain;charset=utf-8' });
@@ -145,9 +133,7 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
-        // === PIPER TTS (ОЗВУЧКА) ===
-        let isSpeaking = false;
-        let currentAudio = null;
+        let isSpeaking = false; let currentAudio = null;
         speakBtn.addEventListener('click', async () => {
             const text = output.value;
             if (!text || text.trim() === "") { alert("Сначала введите текст!"); return; }
@@ -177,15 +163,15 @@
             }
         });
 
-        // === WHISPER (РАСПОЗНАВАНИЕ) ===
         let transcriber = null; let mediaRecorder; let audioChunks = []; let isRecording = false;
         async function loadModel() {
-            status.textContent = "Загрузка нейросети Whisper (~150 МБ)...";
+            status.textContent = "Загрузка Whisper (~150 МБ)...";
             try {
                 transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', { quantized: true, progress_callback: (data) => { if (data.status === 'progress') status.textContent = `Загрузка: ${Math.round(data.progress)}%`; } });
                 status.textContent = "Готов к работе!"; toggleBtn.disabled = false; toggleBtn.textContent = "🎤 Начать запись";
             } catch (error) { status.textContent = "Ошибка: " + error.message; }
         }
+        
         toggleBtn.addEventListener('click', async () => {
             if (toggleBtn.disabled) return; 
             if (!isRecording) {
@@ -205,48 +191,24 @@
             } else { mediaRecorder.stop(); isRecording = false; }
         });
 
-        // ==========================================
-        // === СОПРЯЖЕНИЕ С ТЕЛЕФОНОМ (QR + WebRTC) ===
-        // ==========================================
+        // === СОПРЯЖЕНИЕ С ТЕЛЕФОНОМ ===
         let peer = null;
         document.getElementById('connectPhoneBtn').addEventListener('click', () => {
             qrModal.style.display = 'flex';
-            qrcodeContainer.innerHTML = ''; // Очищаем старый QR
-
-            // Генерируем уникальный ID для этого ПК
+            qrcodeContainer.innerHTML = '';
             const myPeerId = 'telepat-pc-' + Math.random().toString(36).substr(2, 6);
-            
-            // Создаем QR-код со ссылкой на наш сайт и ID
             const currentUrl = window.location.origin + window.location.pathname;
             const connectUrl = `${currentUrl}?connect=${myPeerId}`;
             
-            new QRCode(qrcodeContainer, {
-                text: connectUrl,
-                width: 180,
-                height: 180,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
-            });
-
-            // Запускаем P2P сервер (ожидание телефона)
+            new QRCode(qrcodeContainer, { text: connectUrl, width: 180, height: 180 });
             if (peer) peer.destroy();
             peer = new Peer(myPeerId);
 
-            peer.on('open', (id) => {
-                console.log('Ожидание подключения по ID:', id);
-            });
-
             peer.on('connection', (conn) => {
                 conn.on('data', (data) => {
-                    // Когда телефон присылает данные
                     if (typeof data === 'string') {
-                        output.value += "\n" + data;
-                        updateStats();
-                        status.textContent = "Текст успешно получен с телефона!";
-                    } else if (data instanceof ArrayBuffer || data instanceof Blob) {
-                        status.textContent = "Получен файл с телефона! (В разработке: декодирование аудио)";
-                        // В будущем здесь можно декодировать аудио и отправлять в Whisper
+                        output.value += "\n" + data; updateStats();
+                        status.textContent = "Текст получен с телефона!";
                     }
                     qrModal.style.display = 'none';
                 });
@@ -258,23 +220,6 @@
             if (peer) { peer.destroy(); peer = null; }
         });
 
-        // Если пользователь открыл сайт с параметром ?connect=ID (т.е. он на телефоне)
-        const urlParams = new URLSearchParams(window.location.search);
-        const connectId = urlParams.get('connect');
-        if (connectId) {
-            // Это режим телефона
-            const phonePeer = new Peer();
-            phonePeer.on('open', () => {
-                const conn = phonePeer.connect(connectId);
-                conn.on('open', () => {
-                    // Показываем интерфейс для отправки
-                    alert("Телефон подключен к компьютеру! Сейчас вы можете отправить текст.");
-                    // Для теста отправим приветствие
-                    conn.send("Привет! Это текст, переданный с телефона через P2P.");
-                });
-            });
-        }
-
         toggleBtn.disabled = true; toggleBtn.textContent = "Загрузка..."; loadModel();
     </script>
 </head>
@@ -282,11 +227,9 @@
 
 <div class="app-container">
     <div class="header">
-        <h1>🎙️ Telepat Voice Студия</h1>
+        <h1>🎙️ Telepat Voice Студия v2.0</h1>
         <div class="header-controls">
-            <button class="icon-btn has-tooltip" id="fontDown" data-tooltip="Уменьшить размер шрифта">А-</button>
-            <button class="icon-btn has-tooltip" id="fontUp" data-tooltip="Увеличить размер шрифта">А+</button>
-            <button class="icon-btn has-tooltip" id="themeBtn" data-tooltip="Сменить тему (день/ночь)">☀️</button>
+            <button class="icon-btn has-tooltip" id="themeBtn" data-tooltip="Сменить тему">☀️</button>
         </div>
     </div>
 
@@ -300,11 +243,11 @@
             <option value="ruslan">👨 Руслан (Мужской)</option>
         </select>
 
-        <!-- Кнопка сопряжения -->
-        <button class="icon-btn has-tooltip" id="connectPhoneBtn" data-tooltip="Передать файл или текст с телефона по QR-коду">📱 Телефон</button>
+        <!-- ЯРКАЯ ЗЕЛЕНАЯ КНОПКА ТЕЛЕФОНА -->
+        <button class="icon-btn has-tooltip" id="connectPhoneBtn" data-tooltip="Передать файл с телефона" style="background-color: #2ecc71; color: white; border: none;">📱 Телефон</button>
 
         <input type="file" id="fileInput" accept="audio/*,video/*" style="display: none;">
-        <button class="icon-btn has-tooltip" onclick="document.getElementById('fileInput').click()" data-tooltip="Загрузить аудио или видео с компьютера">📁 Файл</button>
+        <button class="icon-btn has-tooltip" onclick="document.getElementById('fileInput').click()" data-tooltip="Загрузить файл с компьютера">📁 Файл</button>
     </div>
     
     <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Говорите, вставляйте текст или загружайте файл..."></textarea>
@@ -321,30 +264,29 @@
     </div>
 
     <div class="actions-row">
-        <button class="action-btn has-tooltip" id="cleanBtn" data-tooltip="✨ Автоматически убрать лишние пробелы и знаки">✨ Исправить</button>
-        <button class="action-btn has-tooltip" id="summaryBtn" data-tooltip="📝 Выделить самые важные предложения из текста">📝 Резюме</button>
-        <button class="action-btn has-tooltip" id="translateBtn" data-tooltip="🌐 Перевести текст на английский язык">🌐 Перевести</button>
+        <button class="action-btn btn-green has-tooltip" id="cleanBtn" data-tooltip="Убрать лишние пробелы">✨ Исправить</button>
+        <button class="action-btn btn-blue has-tooltip" id="summaryBtn" data-tooltip="Выделить главное">📝 Резюме</button>
+        <button class="action-btn btn-blue has-tooltip" id="translateBtn" data-tooltip="Перевести на английский">🌐 Перевести</button>
     </div>
     
     <div class="actions-row">
-        <button class="action-btn has-tooltip" id="copyBtn" data-tooltip="📋 Скопировать весь текст в буфер обмена">📋 Копировать</button>
-        <button class="action-btn has-tooltip" id="downloadBtn" data-tooltip="💾 Скачать текст в виде обычного файла (.txt)">💾 .txt</button>
-        <button class="action-btn has-tooltip" id="excelBtn" data-tooltip="📊 Скачать в виде таблицы для Excel">📊 В Excel</button>
-        <button class="action-btn has-tooltip" id="srtBtn" data-tooltip="📺 Скачать файл субтитров для видео">📺 Субтитры</button>
-        <button class="action-btn has-tooltip" id="pdfBtn" data-tooltip="📄 Сохранить текст в формате PDF">📄 PDF</button>
+        <button class="action-btn btn-purple has-tooltip" id="copyBtn" data-tooltip="Скопировать текст">📋 Копировать</button>
+        <button class="action-btn btn-gray has-tooltip" id="downloadBtn" data-tooltip="Скачать .txt">💾 .txt</button>
+        <button class="action-btn btn-orange has-tooltip" id="excelBtn" data-tooltip="Скачать для Excel">📊 В Excel</button>
+        <button class="action-btn btn-purple has-tooltip" id="srtBtn" data-tooltip="Скачать субтитры">📺 Субтитры</button>
+        <button class="action-btn btn-orange has-tooltip" id="pdfBtn" data-tooltip="Сохранить в PDF">📄 PDF</button>
         
-        <button class="action-btn speak-btn has-tooltip" id="speakBtn" data-tooltip="Загрузка...">🔊 Озвучить</button>
+        <button class="action-btn btn-green speak-btn has-tooltip" id="speakBtn" data-tooltip="Загрузка...">🔊 Озвучить</button>
     </div>
     
-    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Нажмите, чтобы начать голосовой ввод" disabled>Загрузка...</button>
+    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Нажмите, чтобы начать запись" disabled>Загрузка...</button>
     <div class="status" id="status">Инициализация...</div>
 </div>
 
-<!-- Модальное окно для QR-кода -->
 <div class="modal-overlay" id="qrModal">
     <div class="modal">
         <h2>📱 Подключение телефона</h2>
-        <p>Отсканируйте QR-код камерой телефона, чтобы передать текст или файл на этот компьютер.</p>
+        <p>Отсканируйте QR-код камерой телефона, чтобы передать текст на этот компьютер.</p>
         <div id="qrcode"></div>
         <button class="close-modal-btn" id="closeQrBtn">Закрыть</button>
     </div>
