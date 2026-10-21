@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Telepat Voice - Студия</title>
     
-    <!-- Подключаем библиотеку Piper TTS -->
-    <script src="https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.0/dist/index.js"></script>
-
     <style>
         :root {
             --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --accent: #ff4d4d; 
@@ -58,6 +55,11 @@
     </style>
     
     <script type="module">
+        // Импортируем Piper TTS
+        import { PiperTTS } from 'https://cdn.jsdelivr.net/npm/@mbreza/piper-tts-web@1.0.4/+esm';
+        // Делаем доступным глобально
+        window.PiperTTS = PiperTTS;
+        
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
         
         env.allowLocalModels = false;
@@ -105,12 +107,20 @@
         setInterval(() => { if (output.value) localStorage.setItem('telepat_draft', output.value); }, 5000);
         window.addEventListener('load', () => { const draft = localStorage.getItem('telepat_draft'); if (draft) { output.value = draft; updateStats(); } });
 
-        // === ОЧИСТКА ===
+        // === КНОПКИ (Очистка и т.д.) ===
         document.getElementById('cleanBtn').addEventListener('click', () => {
             let text = output.value.replace(/ {2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])([^\s\n])/g, '$1 $2');
             text = text.replace(/([.!?]\s+)([а-яa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase()).trim();
             if (text.length > 0) text = text.charAt(0).toUpperCase() + text.slice(1);
             output.value = text; updateStats();
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', () => { if(!output.value) return; output.select(); document.execCommand('copy'); window.getSelection().removeAllRanges(); });
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (!output.value) return;
+            const blob = new Blob([output.value], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Telepat_${Date.now()}.txt`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
         // === PIPER TTS (НЕЙРОСЕТЕВАЯ ОЗВУЧКА) ===
@@ -120,7 +130,11 @@
         document.getElementById('speakBtn').addEventListener('click', async () => {
             const btn = document.getElementById('speakBtn');
             const text = output.value;
-            if (!text) return;
+            
+            if (!text || text.trim() === "") {
+                alert("Сначала введите или надиктуйте текст!");
+                return;
+            }
 
             if (isSpeaking) {
                 if (currentAudio) { currentAudio.pause(); currentAudio = null; }
@@ -128,48 +142,53 @@
                 status.textContent = 'Остановлено.'; return;
             }
 
-            const selectedVoiceId = voiceSelect.value; // 'irina', 'denis', 'dmitri', 'ruslan'
-            btn.textContent = '⏳ Генерация...'; btn.classList.add('speaking');
-            status.textContent = `Загрузка голоса (${selectedVoiceId})... Подождите.`;
+            const selectedVoiceId = voiceSelect.value; // 'irina', 'denis', и т.д.
+            btn.textContent = '⏳ Загрузка...'; btn.classList.add('speaking');
+            status.textContent = `Загрузка голоса (${selectedVoiceId})...`;
 
             try {
-                // Вызываем функцию из библиотеки @mintplex-labs/piper-tts-web
-                const wav = await window.tts.predict({
-                    text: text,
-                    voiceId: `ru_RU-${selectedVoiceId}-medium`,
-                    modelUrl: `./models/ru_RU-${selectedVoiceId}-medium.onnx`,
-                    configUrl: `./models/ru_RU-${selectedVoiceId}-medium.onnx.json`
+                console.log("1. Начало озвучки. Выбран голос:", selectedVoiceId);
+                
+                if (!window.PiperTTS) {
+                    throw new Error("Библиотека PiperTTS не загрузилась с сервера. Проверьте интернет.");
+                }
+
+                const modelUrl = `./models/ru_RU-${selectedVoiceId}-medium.onnx`;
+                const configUrl = `./models/ru_RU-${selectedVoiceId}-medium.onnx.json`;
+
+                console.log("2. Запрос к файлам:", modelUrl);
+                
+                // Загружаем голос
+                const voice = await window.PiperTTS.loadVoice({
+                    modelUrl: modelUrl,
+                    configUrl: configUrl
                 });
 
-                const blob = new Blob([wav], { type: 'audio/wav' });
+                console.log("3. Модель загружена! Генерация звука...");
+                status.textContent = 'Генерация речи...';
+
+                const wavData = await voice.synthesize(text);
+                
+                console.log("4. Звук сгенерирован!");
+                const blob = new Blob([wavData], { type: 'audio/wav' });
                 const url = URL.createObjectURL(blob);
                 
                 currentAudio = new Audio(url);
                 currentAudio.onended = () => { isSpeaking = false; btn.textContent = '🔊 Озвучить'; btn.classList.remove('speaking'); status.textContent = 'Готово!'; };
+                
                 currentAudio.play();
+                console.log("5. Воспроизведение...");
+                
                 isSpeaking = true; btn.textContent = '⏹ Стоп'; status.textContent = 'Воспроизведение...';
+
             } catch (error) {
-                console.error("Ошибка TTS:", error); 
-                status.textContent = 'Ошибка озвучки: ' + error.message;
+                console.error("ОШИБКА TTS:", error); 
+                alert("Ошибка озвучки:\n" + error.message + "\n\nЕсли вы запускаете файл локально (двойным кликом), браузер может блокировать загрузку модели. Используйте локальный сервер или GitHub Pages.");
+                status.textContent = 'Ошибка: ' + error.message;
                 btn.textContent = '🔊 Озвучить'; btn.classList.remove('speaking'); isSpeaking = false;
             }
         });
 
-        // === ОСТАЛЬНЫЕ ФУНКЦИИ (Копировать, Скачать, Резюме и т.д.) ===
-        document.getElementById('copyBtn').addEventListener('click', () => { if(!output.value) return; output.select(); document.execCommand('copy'); window.getSelection().removeAllRanges(); });
-        document.getElementById('downloadBtn').addEventListener('click', () => {
-            if (!output.value) return;
-            const blob = new Blob([output.value], { type: 'text/plain;charset=utf-8' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Telepat_${Date.now()}.txt`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        });
-        document.getElementById('summaryBtn').addEventListener('click', () => {
-            if (output.value.length < 100) { alert("Текст слишком короткий."); return; }
-            const sentences = output.value.match(/[^.!?]+[.!?]+/g) || [output.value];
-            output.value = "=== КРАТКОЕ СОДЕРЖАНИЕ ===\n" + (sentences.length > 3 ? sentences.slice(0, 3).join(' ') : sentences.join(' ')) + "\n\n=== ПОЛНЫЙ ТЕКСТ ===\n" + output.value;
-            updateStats();
-        });
-        
         // === WHISPER (РАСПОЗНАВАНИЕ) ===
         let transcriber = null; let mediaRecorder; let audioChunks = []; let isRecording = false;
         async function loadModel() {
