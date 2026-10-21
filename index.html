@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Live v5.3</title>
+    <title>Telepat Voice - Live v5.4</title>
     
     <script type="module">
         import * as tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
@@ -128,18 +128,18 @@
                     status.style.color = "#ff4d4d";
                 };
 
-                // Обработка ошибок (убрали надоедливый alert для aborted)
+                // ТИХАЯ ОБРАБОТКА ОШИБОК (без назойливых окон)
                 recognition.onerror = (event) => {
                     console.log("Speech Error:", event.error);
                     if (event.error === 'not-allowed') {
-                        alert("❌ Браузер заблокировал микрофон!\n\nНажмите на замочек 🔒 в адресной строке и разрешите доступ.");
+                        alert("❌ Разрешите доступ к микрофону в настройках браузера (нажмите на замочек 🔒).");
                         stopListening();
                     } else if (event.error === 'network') {
-                        alert("❌ Ошибка сети: Распознавание не может связаться с серверами.\n\nПопробуйте открыть сайт в Google Chrome или включить VPN.");
-                        stopListening();
-                    } else if (event.error === 'aborted') {
-                        // Игнорируем, если браузер сам оборвал соединение
-                        console.log("Соединение прервано браузером. Перезапуск...");
+                        status.textContent = "⚠️ Сбой сети Google. Перезапуск...";
+                        status.style.color = "#ffa500";
+                        // Тихо перезапускаем через 2 секунды
+                    } else if (event.error === 'aborted' || event.error === 'no-speech') {
+                        // Игнорируем, если браузер просто сделал паузу
                     }
                 };
 
@@ -158,17 +158,19 @@
                 };
 
                 recognition.onend = () => {
-                    // Если мы не нажимали "Стоп", а браузер сам прервал запись (из-за паузы), тихо перезапускаем
                     if (isListening) {
+                        // Автоматический перезапуск через 2 секунды, если браузер оборвал связь
                         setTimeout(() => {
-                            try { recognition.start(); } catch(e) {}
-                        }, 300); // Небольшая пауза перед перезапуском
+                            if (isListening) {
+                                try { recognition.start(); } catch(e) {}
+                            }
+                        }, 2000); 
                     }
                 };
             } else {
                 toggleBtn.textContent = "❌ Браузер не поддерживает";
                 toggleBtn.disabled = true;
-                alert("Ваш браузер не поддерживает голосовой ввод. Откройте сайт в Google Chrome или Microsoft Edge.");
+                alert("Откройте сайт в Google Chrome или Microsoft Edge.");
             }
 
             function startListening() {
@@ -176,9 +178,7 @@
                     output.value = ""; 
                     try {
                         recognition.start();
-                    } catch (e) {
-                        alert("Не удалось запустить микрофон: " + e.message);
-                    }
+                    } catch (e) {}
                 }
             }
 
@@ -324,7 +324,7 @@
 
 <div class="app-container">
     <div class="header">
-        <h1>🎙️ Telepat Voice Live v5.3</h1>
+        <h1>🎙️ Telepat Voice Live v5.4</h1>
         <div class="header-controls">
             <button class="icon-btn has-tooltip" id="themeBtn" data-tooltip="Сменить тему">☀️</button>
         </div>
