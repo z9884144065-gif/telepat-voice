@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Студия v4.1</title>
+    <title>Telepat Voice - Студия v5.0 (Live)</title>
     
     <script type="module">
         import * as tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
@@ -46,6 +46,7 @@
         
         .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; color: white; display: flex; justify-content: center; align-items: center; gap: 10px; background-color: #ff4d4d; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4); }
         .btn:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; }
+        .btn.listening { background-color: #e74c3c; animation: pulse 1.5s infinite; }
         
         .status { text-align: center; margin-top: 10px; font-size: 14px; color: #4caf50; min-height: 20px; }
         
@@ -62,17 +63,17 @@
         .close-modal-btn { background: transparent; color: #aaa; border: 1px solid #555; padding: 10px 20px; border-radius: 8px; cursor: pointer; width: 100%; }
         #qrcode { display: flex; justify-content: center; margin: 20px 0; background: white; padding: 15px; border-radius: 10px; }
         
-        /* Ссылка для ручного подключения */
         .manual-link-box { background: #111; padding: 10px; border-radius: 8px; font-size: 12px; word-break: break-all; margin-top: 10px; border: 1px solid #444; display: none; }
         .manual-link-box a { color: #2ecc71; text-decoration: none; }
 
-        /* ИНТЕРФЕЙС ДЛЯ ТЕЛЕФОНА */
         #phone-interface { display: none; background: var(--panel); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--border); text-align: center; box-sizing: border-box; }
         #phone-interface h2 { color: #2ecc71; }
         #phone-interface textarea { height: 200px; margin-bottom: 20px; }
         #phone-interface .btn-send { background: #2ecc71; font-size: 20px; }
         #phone-status { margin-top: 15px; color: #ffa500; font-weight: bold; }
         #phone-retry-btn { display: none; background: #e67e22; margin-top: 10px; font-size: 16px; padding: 10px; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
     </style>
     
     <script type="module">
@@ -96,28 +97,21 @@
             document.querySelector('.app-container').style.display = 'none';
             document.getElementById('phone-interface').style.display = 'block';
             
-            let phonePeer = null;
-            let conn = null;
-
+            let phonePeer = null; let conn = null;
             function connectToPC() {
                 document.getElementById('phone-status').textContent = "⏳ Подключение к ПК...";
                 document.getElementById('phone-send-btn').disabled = true;
                 document.getElementById('phone-retry-btn').style.display = 'none';
-
                 if (phonePeer) phonePeer.destroy();
                 phonePeer = new Peer();
-
                 phonePeer.on('open', (id) => {
                     conn = phonePeer.connect(connectId);
-                    
-                    // Таймаут на случай, если связь не установится
                     const timeout = setTimeout(() => {
                         if (!conn.open) {
-                            document.getElementById('phone-status').textContent = "❌ Не удалось подключиться. Проверьте интернет или попробуйте снова.";
+                            document.getElementById('phone-status').textContent = "❌ Ошибка подключения.";
                             document.getElementById('phone-retry-btn').style.display = 'block';
                         }
                     }, 5000);
-
                     conn.on('open', () => {
                         clearTimeout(timeout);
                         document.getElementById('phone-status').textContent = "✅ Подключено к ПК!";
@@ -125,24 +119,10 @@
                         document.getElementById('phone-send-btn').disabled = false;
                         document.getElementById('phone-send-btn').textContent = "Отправить на ПК";
                     });
-
-                    conn.on('error', (err) => {
-                        clearTimeout(timeout);
-                        document.getElementById('phone-status').textContent = "❌ Ошибка соединения: " + err.type;
-                        document.getElementById('phone-retry-btn').style.display = 'block';
-                    });
-                });
-
-                phonePeer.on('error', (err) => {
-                    document.getElementById('phone-status').textContent = "❌ Ошибка сети: " + err.type;
-                    document.getElementById('phone-retry-btn').style.display = 'block';
                 });
             }
-
-            connectToPC(); // Запуск подключения
-
+            connectToPC();
             document.getElementById('phone-retry-btn').addEventListener('click', connectToPC);
-
             document.getElementById('phone-send-btn').addEventListener('click', () => {
                 const text = document.getElementById('phone-text').value;
                 if (text && conn && conn.open) {
@@ -154,6 +134,80 @@
 
         } else {
             // === РЕЖИМ КОМПЬЮТЕРА ===
+            
+            // === ЖИВАЯ ТРАНСКРИБАЦИЯ (Web Speech API) ===
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition = null;
+            let isListening = false;
+
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.lang = 'ru-RU';
+                recognition.continuous = true;
+                recognition.interimResults = true; // Показывать текст прямо во время речи
+
+                recognition.onstart = () => {
+                    isListening = true;
+                    toggleBtn.textContent = "⏹ Выключить микрофон";
+                    toggleBtn.classList.add('listening');
+                    status.textContent = "🔴 Слушаю... Говорите!";
+                    status.style.color = "#ff4d4d";
+                };
+
+                recognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    
+                    // Добавляем финальный текст в конец
+                    if (finalTranscript) {
+                        output.value += (output.value ? " " : "") + finalTranscript;
+                        updateStats();
+                    }
+                    // Если нужно, можно выводить промежуточный текст, но обычно он просто мешает
+                };
+
+                recognition.onerror = (event) => {
+                    status.textContent = "Ошибка: " + event.error;
+                    status.style.color = "#ff4d4d";
+                    if (event.error === 'not-allowed') {
+                        alert("Пожалуйста, разрешите доступ к микрофону в настройках браузера!");
+                    }
+                };
+
+                recognition.onend = () => {
+                    isListening = false;
+                    toggleBtn.textContent = "🎤 Включить микрофон";
+                    toggleBtn.classList.remove('listening');
+                    if (status.textContent.includes("Слушаю")) {
+                        status.textContent = "Готов к работе";
+                        status.style.color = "#4caf50";
+                    }
+                };
+            } else {
+                toggleBtn.textContent = "Браузер не поддерживает";
+                toggleBtn.disabled = true;
+                status.textContent = "Используйте Chrome или Edge для живой записи.";
+            }
+
+            toggleBtn.addEventListener('click', () => {
+                if (!recognition) return;
+                
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    output.value = ""; // Очищаем поле перед новой записью (опционально)
+                    recognition.start();
+                }
+            });
+
             function updateSpeakTooltip() {
                 const selectedText = voiceSelect.options[voiceSelect.selectedIndex].text;
                 speakBtn.setAttribute('data-tooltip', `🔊 Озвучить текст голосом: ${selectedText}`);
@@ -174,6 +228,7 @@
             }
             output.addEventListener('input', updateStats);
 
+            // Остальные кнопки (Исправить, Переводчик и т.д.)
             document.getElementById('cleanBtn').addEventListener('click', () => {
                 let text = output.value.replace(/ {2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])([^\s\n])/g, '$1 $2');
                 text = text.replace(/([.!?]\s+)([а-яa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase()).trim();
@@ -230,55 +285,23 @@
                 } catch (error) { alert("Ошибка озвучки:\n" + error.message); speakBtn.textContent = '🔊 Озвучить'; isSpeaking = false; }
             });
 
-            let transcriber = null; let mediaRecorder; let audioChunks = []; let isRecording = false;
-            async function loadModel() {
-                status.textContent = "Загрузка Whisper (~150 МБ)...";
-                try {
-                    transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', { quantized: true, progress_callback: (data) => { if (data.status === 'progress') status.textContent = `Загрузка: ${Math.round(data.progress)}%`; } });
-                    status.textContent = "Готов к работе!"; toggleBtn.disabled = false; toggleBtn.textContent = "🎤 Начать запись";
-                } catch (error) { status.textContent = "Ошибка: " + error.message; }
-            }
-            toggleBtn.addEventListener('click', async () => {
-                if (toggleBtn.disabled) return; 
-                if (!isRecording) {
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); mediaRecorder = new MediaRecorder(stream); audioChunks = [];
-                        mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
-                        mediaRecorder.onstop = async () => {
-                            status.textContent = "Распознавание...";
-                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' }); const arrayBuffer = await audioBlob.arrayBuffer(); const audioContext = new AudioContext({ sampleRate: 16000 }); const decodedAudio = await audioContext.decodeAudioData(arrayBuffer); const audioData = decodedAudio.getChannelData(0);
-                            const result = await transcriber(audioData, { language: 'russian', task: 'transcribe' });
-                            let text = result.text.trim();
-                            if (text) { output.value += (output.value ? "\n" : "") + text; updateStats(); }
-                            status.textContent = "Готово!"; toggleBtn.textContent = "🎤 Начать запись"; toggleBtn.disabled = false; isRecording = false;
-                        };
-                        mediaRecorder.start(); isRecording = true; toggleBtn.textContent = "⏹ Остановить"; status.textContent = "🔴 Слушаю...";
-                    } catch (err) { status.textContent = "Ошибка: " + err.message; }
-                } else { mediaRecorder.stop(); isRecording = false; }
-            });
-
             // Генератор QR-кода на ПК
             let peer = null;
             document.getElementById('connectPhoneBtn').addEventListener('click', () => {
                 qrModal.style.display = 'flex';
                 qrcodeContainer.innerHTML = '';
                 document.getElementById('manualLinkBox').style.display = 'none';
-                
                 const myPeerId = 'telepat-pc-' + Math.random().toString(36).substr(2, 6);
                 const currentUrl = window.location.origin + window.location.pathname;
                 const connectUrl = `${currentUrl}?connect=${myPeerId}`;
                 
                 new QRCode(qrcodeContainer, { text: connectUrl, width: 180, height: 180 });
-                
-                // Показываем прямую ссылку на всякий случай
                 document.getElementById('manualLinkBox').style.display = 'block';
                 document.getElementById('manualLink').href = connectUrl;
                 document.getElementById('manualLink').textContent = connectUrl;
 
                 if (peer) peer.destroy();
                 peer = new Peer(myPeerId);
-
-                // Показываем, что ждем подключения
                 status.textContent = "Ожидание подключения телефона...";
 
                 peer.on('connection', (conn) => {
@@ -287,7 +310,7 @@
                         if (typeof data === 'string') {
                             output.value += (output.value ? "\n" : "") + data; updateStats();
                             status.textContent = "📥 Текст получен с телефона!";
-                            qrModal.style.display = 'none'; // Закрываем окно при получении
+                            qrModal.style.display = 'none';
                         }
                     });
                 });
@@ -297,13 +320,15 @@
                 if (peer) { peer.destroy(); peer = null; }
             });
 
-            toggleBtn.disabled = true; toggleBtn.textContent = "Загрузка..."; loadModel();
+            toggleBtn.textContent = "🎤 Включить микрофон";
+            toggleBtn.disabled = false;
+            status.textContent = "Готов к работе (Онлайн)";
+            updateStats();
         }
     </script>
 </head>
 <body>
 
-<!-- ЭКРАН ДЛЯ ТЕЛЕФОНА -->
 <div id="phone-interface">
     <h2>📱 Отправка на ПК</h2>
     <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">Вставьте текст ниже и нажмите кнопку, чтобы он появился на компьютере.</p>
@@ -313,10 +338,9 @@
     <div id="phone-status">Ожидание связи с ПК...</div>
 </div>
 
-<!-- ЭКРАН ДЛЯ КОМПЬЮТЕРА -->
 <div class="app-container">
     <div class="header">
-        <h1>🎙️ Telepat Voice Студия v4.1</h1>
+        <h1>🎙️ Telepat Voice Студия v5.0 (Live)</h1>
         <div class="header-controls">
             <button class="icon-btn has-tooltip" id="themeBtn" data-tooltip="Сменить тему">☀️</button>
         </div>
@@ -335,7 +359,7 @@
         <button class="icon-btn has-tooltip" onclick="document.getElementById('fileInput').click()" data-tooltip="Загрузить файл">📁 Файл</button>
     </div>
     
-    <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Говорите, вставляйте текст или загружайте файл..."></textarea>
+    <textarea id="output" maxlength="5000000" spellcheck="true" placeholder="Нажмите 'Включить микрофон' и говорите. Текст появится здесь мгновенно..."></textarea>
     
     <div class="stats-grid">
         <div class="stat-item"><span class="stat-label">Всего слов</span><span class="stat-value" id="statWords">0</span></div>
@@ -363,7 +387,7 @@
         <button class="action-btn btn-green speak-btn has-tooltip" id="speakBtn" data-tooltip="Загрузка...">🔊 Озвучить</button>
     </div>
     
-    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Нажмите, чтобы начать запись" disabled>Загрузка...</button>
+    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Нажмите, чтобы включить микрофон" disabled>Загрузка...</button>
     <div class="status" id="status">Инициализация...</div>
 </div>
 
@@ -387,7 +411,7 @@
 <div class="modal-overlay" id="qrModal">
     <div class="modal">
         <h2>📱 Подключение телефона</h2>
-        <p>Наведите камеру телефона на QR-код. Если не работает, скопируйте ссылку ниже и откройте её на телефоне.</p>
+        <p>Наведите камеру телефона на QR-код.</p>
         <div id="qrcode"></div>
         <div class="manual-link-box" id="manualLinkBox">
             Ссылка для ручного ввода:<br>
