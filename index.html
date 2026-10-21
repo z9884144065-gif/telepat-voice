@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Telepat Voice - Студия</title>
     
-    <!-- Подключаем Piper TTS через надежный CDN -->
+    <!-- Подключаем библиотеку Piper TTS -->
     <script type="module">
         import { PiperTTS } from 'https://esm.sh/@mbreza/piper-tts-web@1.0.4';
         window.PiperTTS = PiperTTS;
@@ -105,7 +105,7 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
-        // === PIPER TTS (НЕЙРОСЕТЕВАЯ ОЗВУЧКА) ===
+        // === PIPER TTS (НЕЙРОСЕТЕВАЯ ОЗВУЧКА БЕЗ ЛОКАЛЬНЫХ ФАЙЛОВ) ===
         let isSpeaking = false;
         let currentAudio = null;
 
@@ -123,13 +123,15 @@
 
             const selectedVoiceId = voiceSelect.value; 
             btn.textContent = '⏳ Загрузка...'; btn.classList.add('speaking');
-            status.textContent = `Загрузка голоса (${selectedVoiceId})...`;
+            status.textContent = `Загрузка голоса (${selectedVoiceId})... Первый раз может занять 1-2 минуты.`;
 
             try {
-                if (!window.PiperTTS) throw new Error("Библиотека PiperTTS не загрузилась.");
-                
-                const modelUrl = `./models/ru_RU-${selectedVoiceId}-medium.onnx`;
-                const configUrl = `./models/ru_RU-${selectedVoiceId}-medium.onnx.json`;
+                if (!window.PiperTTS) throw new Error("Библиотека PiperTTS не загрузилась. Проверьте интернет.");
+
+                // ПРЯМЫЕ ССЫЛКИ НА HUGGING FACE (не нужно загружать файлы на GitHub!)
+                const baseHfUrl = `https://huggingface.co/rhasspy/piper-voices/resolve/main/ru/ru_RU/${selectedVoiceId}/medium/`;
+                const modelUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx`;
+                const configUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx.json`;
 
                 const voice = await window.PiperTTS.loadVoice({ modelUrl, configUrl });
                 status.textContent = 'Генерация звука... (пожалуйста, подождите)';
