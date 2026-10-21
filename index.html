@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Telepat Voice - Студия</title>
     
-    <!-- Подключаем библиотеку Piper TTS через надежный CDN jsDelivr -->
+    <!-- Подключаем библиотеку через надежный CDN -->
     <script type="module">
-        import { PiperTTS } from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
-        window.PiperTTS = PiperTTS;
+        import { TtsSession } from 'https://cdn.jsdelivr.net/npm/@realtimex/piper-tts-web@1.1.1/+esm';
+        window.TtsSession = TtsSession;
     </script>
 
     <style>
@@ -126,18 +126,22 @@
             status.textContent = `Загрузка голоса (${selectedVoiceId})... Первый раз может занять 1-2 минуты.`;
 
             try {
-                if (!window.PiperTTS) throw new Error("Библиотека PiperTTS не загрузилась. Проверьте интернет.");
+                if (!window.TtsSession) throw new Error("Библиотека TTS не загрузилась. Проверьте интернет.");
 
                 const baseHfUrl = `https://huggingface.co/rhasspy/piper-voices/resolve/main/ru/ru_RU/${selectedVoiceId}/medium/`;
                 const modelUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx`;
                 const configUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx.json`;
 
-                const voice = await window.PiperTTS.loadVoice({ modelUrl, configUrl });
+                const session = new window.TtsSession({
+                    voiceId: `ru_RU-${selectedVoiceId}-medium`,
+                    allowLocalModels: false, // Мы используем удаленные модели
+                    fallbackStrategy: 'cdn',
+                });
+                
                 status.textContent = 'Генерация звука... (пожалуйста, подождите)';
+                const wav = await session.predict(text);
                 
-                const wavData = await voice.synthesize(text);
-                
-                const blob = new Blob([wavData], { type: 'audio/wav' });
+                const blob = new Blob([wav], { type: 'audio/wav' });
                 const url = URL.createObjectURL(blob);
                 
                 currentAudio = new Audio(url);
