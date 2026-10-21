@@ -5,63 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Telepat Voice - Студия</title>
     
-    <style>
-        :root {
-            --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --accent: #ff4d4d; 
-            --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222;
-        }
-        body.light-mode {
-            --bg: #f4f4f9; --panel: #ffffff; --text: #333; --accent: #e74c3c; 
-            --border: #ccc; --input-bg: #fff; --stat-bg: #f9f9f9;
-        }
+    <!-- Подключаем Piper TTS через надежный CDN -->
+    <script type="module">
+        import { PiperTTS } from 'https://esm.sh/@mbreza/piper-tts-web@1.0.4';
+        window.PiperTTS = PiperTTS;
+    </script>
 
+    <style>
+        :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --accent: #ff4d4d; --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222; }
+        body.light-mode { --bg: #f4f4f9; --panel: #ffffff; --text: #333; --accent: #e74c3c; --border: #ccc; --input-bg: #fff; --stat-bg: #f9f9f9; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; overflow-x: hidden; transition: 0.3s; }
-        
         .app-container { background: var(--panel); width: 100%; max-width: 900px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; flex-direction: column; box-sizing: border-box; }
-        
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         .header h1 { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; color: var(--accent); }
         .header-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .icon-btn { background: none; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 14px; transition: 0.2s; }
         .icon-btn:hover { background: var(--border); }
-        
         .toolbar { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; background: var(--stat-bg); padding: 10px; border-radius: 10px; flex-wrap: wrap; border: 1px solid var(--border); }
         .toolbar input[type="text"] { flex: 1; min-width: 150px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); outline: none; }
         .toolbar select { padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); outline: none; }
-        
         textarea { width: 100%; height: 250px; padding: 15px; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 16px; resize: vertical; margin-bottom: 15px; outline: none; line-height: 1.6; font-family: 'Georgia', serif; transition: 0.3s; }
-        
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px; background: var(--stat-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border); }
         .stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
         .stat-item:last-child { border-bottom: none; }
         .stat-value { font-weight: bold; background: var(--input-bg); padding: 2px 8px; border-radius: 4px; }
-        
         .actions-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
         .action-btn { flex: 1; min-width: 100px; padding: 10px 5px; border-radius: 8px; border: 1px solid var(--border); background: var(--stat-bg); color: var(--text); font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 5px; font-weight: bold; }
         .action-btn:hover { filter: brightness(1.2); }
         .primary-btn { background: var(--accent); color: white; border: none; }
         .speak-btn.speaking { background: #e74c3c; color: white; animation: pulse 1.5s infinite; }
-        
         .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; color: white; display: flex; justify-content: center; align-items: center; gap: 10px; background-color: var(--accent); }
         .btn:disabled { background-color: #555; cursor: not-allowed; }
-        
         .status { text-align: center; margin-top: 10px; font-size: 14px; color: #4caf50; min-height: 20px; }
-        
-        @media (max-width: 600px) {
-            .actions-row { display: grid; grid-template-columns: 1fr 1fr; }
-            .stats-grid { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 600px) { .actions-row { display: grid; grid-template-columns: 1fr 1fr; } .stats-grid { grid-template-columns: 1fr; } }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
     </style>
     
     <script type="module">
-        // Импортируем Piper TTS
-        import { PiperTTS } from 'https://cdn.jsdelivr.net/npm/@mbreza/piper-tts-web@1.0.4/+esm';
-        // Делаем доступным глобально
-        window.PiperTTS = PiperTTS;
-        
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
-        
         env.allowLocalModels = false;
         
         const output = document.getElementById('output');
@@ -107,7 +88,7 @@
         setInterval(() => { if (output.value) localStorage.setItem('telepat_draft', output.value); }, 5000);
         window.addEventListener('load', () => { const draft = localStorage.getItem('telepat_draft'); if (draft) { output.value = draft; updateStats(); } });
 
-        // === КНОПКИ (Очистка и т.д.) ===
+        // === ОЧИСТКА ===
         document.getElementById('cleanBtn').addEventListener('click', () => {
             let text = output.value.replace(/ {2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])([^\s\n])/g, '$1 $2');
             text = text.replace(/([.!?]\s+)([а-яa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase()).trim();
@@ -115,6 +96,7 @@
             output.value = text; updateStats();
         });
 
+        // === КНОПКИ ЭКСПОРТА ===
         document.getElementById('copyBtn').addEventListener('click', () => { if(!output.value) return; output.select(); document.execCommand('copy'); window.getSelection().removeAllRanges(); });
         document.getElementById('downloadBtn').addEventListener('click', () => {
             if (!output.value) return;
@@ -131,10 +113,7 @@
             const btn = document.getElementById('speakBtn');
             const text = output.value;
             
-            if (!text || text.trim() === "") {
-                alert("Сначала введите или надиктуйте текст!");
-                return;
-            }
+            if (!text || text.trim() === "") { alert("Сначала введите текст!"); return; }
 
             if (isSpeaking) {
                 if (currentAudio) { currentAudio.pause(); currentAudio = null; }
@@ -142,48 +121,33 @@
                 status.textContent = 'Остановлено.'; return;
             }
 
-            const selectedVoiceId = voiceSelect.value; // 'irina', 'denis', и т.д.
+            const selectedVoiceId = voiceSelect.value; 
             btn.textContent = '⏳ Загрузка...'; btn.classList.add('speaking');
             status.textContent = `Загрузка голоса (${selectedVoiceId})...`;
 
             try {
-                console.log("1. Начало озвучки. Выбран голос:", selectedVoiceId);
+                if (!window.PiperTTS) throw new Error("Библиотека PiperTTS не загрузилась.");
                 
-                if (!window.PiperTTS) {
-                    throw new Error("Библиотека PiperTTS не загрузилась с сервера. Проверьте интернет.");
-                }
-
                 const modelUrl = `./models/ru_RU-${selectedVoiceId}-medium.onnx`;
                 const configUrl = `./models/ru_RU-${selectedVoiceId}-medium.onnx.json`;
 
-                console.log("2. Запрос к файлам:", modelUrl);
+                const voice = await window.PiperTTS.loadVoice({ modelUrl, configUrl });
+                status.textContent = 'Генерация звука... (пожалуйста, подождите)';
                 
-                // Загружаем голос
-                const voice = await window.PiperTTS.loadVoice({
-                    modelUrl: modelUrl,
-                    configUrl: configUrl
-                });
-
-                console.log("3. Модель загружена! Генерация звука...");
-                status.textContent = 'Генерация речи...';
-
                 const wavData = await voice.synthesize(text);
                 
-                console.log("4. Звук сгенерирован!");
                 const blob = new Blob([wavData], { type: 'audio/wav' });
                 const url = URL.createObjectURL(blob);
                 
                 currentAudio = new Audio(url);
                 currentAudio.onended = () => { isSpeaking = false; btn.textContent = '🔊 Озвучить'; btn.classList.remove('speaking'); status.textContent = 'Готово!'; };
-                
                 currentAudio.play();
-                console.log("5. Воспроизведение...");
                 
                 isSpeaking = true; btn.textContent = '⏹ Стоп'; status.textContent = 'Воспроизведение...';
 
             } catch (error) {
                 console.error("ОШИБКА TTS:", error); 
-                alert("Ошибка озвучки:\n" + error.message + "\n\nЕсли вы запускаете файл локально (двойным кликом), браузер может блокировать загрузку модели. Используйте локальный сервер или GitHub Pages.");
+                alert("Ошибка озвучки:\n" + error.message);
                 status.textContent = 'Ошибка: ' + error.message;
                 btn.textContent = '🔊 Озвучить'; btn.classList.remove('speaking'); isSpeaking = false;
             }
