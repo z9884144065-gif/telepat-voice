@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Telepat Voice - Студия</title>
     
-    <!-- Подключаем библиотеку Piper TTS -->
+    <!-- Подключаем библиотеку Piper TTS через надежный CDN jsDelivr -->
     <script type="module">
-        import { PiperTTS } from 'https://esm.sh/@mbreza/piper-tts-web@1.0.4';
+        import { PiperTTS } from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.5/+esm';
         window.PiperTTS = PiperTTS;
     </script>
 
@@ -105,7 +105,7 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
-        // === PIPER TTS (НЕЙРОСЕТЕВАЯ ОЗВУЧКА БЕЗ ЛОКАЛЬНЫХ ФАЙЛОВ) ===
+        // === PIPER TTS (НЕЙРОСЕТЕВАЯ ОЗВУЧКА) ===
         let isSpeaking = false;
         let currentAudio = null;
 
@@ -128,7 +128,6 @@
             try {
                 if (!window.PiperTTS) throw new Error("Библиотека PiperTTS не загрузилась. Проверьте интернет.");
 
-                // ПРЯМЫЕ ССЫЛКИ НА HUGGING FACE (не нужно загружать файлы на GitHub!)
                 const baseHfUrl = `https://huggingface.co/rhasspy/piper-voices/resolve/main/ru/ru_RU/${selectedVoiceId}/medium/`;
                 const modelUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx`;
                 const configUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx.json`;
