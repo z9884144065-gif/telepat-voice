@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Live Instant</title>
+    <title>Telepat Voice - Pro Max</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
@@ -15,38 +15,62 @@
         .header { display: flex; justify-content: space-between; margin-bottom: 15px; align-items: center; }
         .header h1 { font-size: 20px; margin: 0; color: #ff4d4d; }
         
-        textarea { width: 100%; height: 350px; padding: 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 18px; resize: vertical; margin-bottom: 15px; outline: none; line-height: 1.6; box-sizing: border-box; }
+        textarea { width: 100%; height: 300px; padding: 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 16px; resize: vertical; margin-bottom: 15px; outline: none; line-height: 1.6; box-sizing: border-box; }
         
         .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px; background: var(--stat-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border); }
         .stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #ccc; }
         .stat-value { font-weight: bold; color: #fff; background: var(--input-bg); padding: 4px 10px; border-radius: 6px; }
 
         .actions-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; }
-        .action-btn { flex: 1; min-width: 120px; padding: 12px 5px; border-radius: 8px; border: none; color: white; font-size: 14px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; }
-        .action-btn:hover { filter: brightness(1.15); }
+        .action-btn { flex: 1; min-width: 110px; padding: 12px 5px; border-radius: 8px; border: none; color: white; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; position: relative; }
+        .action-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+        
+        /* Цвета кнопок */
         .btn-green { background: #2ecc71; }
         .btn-blue { background: #3498db; }
         .btn-purple { background: #9b59b6; }
         .btn-gray { background: #7f8c8d; }
         .btn-orange { background: #e67e22; }
-        
+        .btn-red { background: #e74c3c; }
+
         .lang-select { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: white; font-size: 14px; outline: none; font-weight: bold; cursor: pointer; }
-        
         .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; background-color: #ff4d4d; transition: 0.3s; }
         .btn:disabled { background-color: #555; cursor: not-allowed; }
         .btn.listening { background-color: #e74c3c; animation: pulse 1.5s infinite; }
         .status { text-align: center; margin-top: 10px; font-size: 15px; color: #4caf50; font-weight: bold; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
 
+        /* 🛠️ ПОДСКАЗКИ ПРИ НАВЕДЕНИИ */
+        .has-tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: rgba(20, 20, 20, 0.95);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.2s;
+            z-index: 9999;
+            border: 1px solid #555;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .has-tooltip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* Модальные окна */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
         .modal { background: #2b2b2b; padding: 30px; border-radius: 20px; text-align: center; max-width: 400px; border: 1px solid #555; }
         .modal h2 { color: #ff4d4d; margin-top: 0; font-size: 22px; }
         #qrcode { display: flex; justify-content: center; margin: 20px 0; background: white; padding: 15px; border-radius: 10px; }
-
         #phone-interface { display: none; background: var(--panel); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; text-align: center; border: 1px solid var(--border); }
         #phone-interface h2 { color: #2ecc71; }
         #phone-interface textarea { height: 200px; }
         #phone-status { margin-top: 15px; color: #ffa500; font-weight: bold; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
 
         @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
     </style>
@@ -63,11 +87,10 @@
 
 <div class="app-container" id="pc-interface">
     <div class="header">
-        <h1>🎙️ Telepat Voice (Instant)</h1>
-        <button class="action-btn btn-green" id="connectPhoneBtn" style="flex: 0 0 150px;">📱 Телефон</button>
+        <h1>🎙️ Telepat Voice (Pro Max)</h1>
+        <button class="action-btn btn-green has-tooltip" id="connectPhoneBtn" style="flex: 0 0 150px;" data-tooltip="Показать QR-код для передачи текста с телефона">📱 Телефон</button>
     </div>
     
-    <!-- Поле, в котором текст будет появляться на лету -->
     <textarea id="output" spellcheck="true" placeholder="Нажмите 'Начать запись' и просто говорите..."></textarea>
     
     <div class="stats-grid">
@@ -77,16 +100,16 @@
         <div class="stat-item"><span>Пробелов:</span><span class="stat-value" id="statSpaces">0</span></div>
     </div>
 
+    <!-- Функции обработки текста -->
     <div class="actions-row">
-        <button class="action-btn btn-blue" id="checkBtn">🔍 Найти ошибки</button>
-        <button class="action-btn btn-green" id="cleanBtn">✨ Убрать пробелы</button>
-        <button class="action-btn btn-orange" id="excelBtn">📊 В Excel</button>
-        <button class="action-btn btn-purple" id="copyBtn">📋 Копировать</button>
-        <button class="action-btn btn-gray" id="downloadBtn">💾 .txt</button>
+        <button class="action-btn btn-blue has-tooltip" id="checkBtn" data-tooltip="🔍 Проверить текст на грамматические ошибки и запятые (LanguageTool)">🔍 Найти ошибки</button>
+        <button class="action-btn btn-green has-tooltip" id="cleanBtn" data-tooltip="✨ Удалить лишние пробелы и расставить заглавные буквы в начале предложений">✨ Очистить текст</button>
+        <button class="action-btn btn-blue has-tooltip" id="translateBtn" data-tooltip="🌐 Перевести текст на выбранный язык (переводятся первые 500 символов бесплатно)">🌐 Перевести</button>
     </div>
 
+    <!-- Выбор языка и экспорт -->
     <div class="actions-row" style="background: #222; padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
-        <span style="margin-right: 10px; font-size: 14px; font-weight: bold; color: #aaa;">🌐 Перевод:</span>
+        <span style="margin-right: 10px; font-size: 14px; font-weight: bold; color: #aaa;">Язык:</span>
         <select id="targetLang" class="lang-select">
             <option value="en">🇬🇧 Английский</option>
             <option value="zh">🇨🇳 Китайский</option>
@@ -95,10 +118,20 @@
             <option value="de">🇩🇪 Немецкий</option>
             <option value="es">🇪🇸 Испанский</option>
         </select>
-        <button class="action-btn btn-blue" id="translateBtn" style="flex: 2;">Перевести текст</button>
+        
+        <button class="action-btn btn-orange has-tooltip" id="excelBtn" data-tooltip="📊 Скачать файл для Excel (разделение по запятым на колонки)">📊 В Excel</button>
+        <button class="action-btn btn-purple has-tooltip" id="srtBtn" data-tooltip="📺 Создать файл субтитров (.srt) для видео">📺 Субтитры</button>
+        <button class="action-btn btn-orange has-tooltip" id="pdfBtn" data-tooltip="📄 Распечатать текст или сохранить в PDF">📄 PDF</button>
+    </div>
+
+    <!-- Озвучка и копирование -->
+    <div class="actions-row">
+        <button class="action-btn btn-green has-tooltip" id="speakBtn" data-tooltip="🔊 Прочитать текст вслух (системный голос)">🔊 Озвучить</button>
+        <button class="action-btn btn-purple has-tooltip" id="copyBtn" data-tooltip="📋 Скопировать весь текст в буфер обмена">📋 Копировать</button>
+        <button class="action-btn btn-gray has-tooltip" id="downloadBtn" data-tooltip="💾 Скачать обычный текстовый файл (.txt)">💾 .txt</button>
     </div>
     
-    <button id="toggleBtn" class="btn">🎤 Начать запись</button>
+    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Включить микрофон. Говорите, текст будет появляться на лету.">🎤 Начать запись</button>
     <div class="status" id="status">Готов к работе</div>
 </div>
 
@@ -116,7 +149,7 @@
 
 <script type="module">
     // ==========================================
-    // 🔥 ВСТАВЬ СЮДА СВОЙ НОВЫЙ КЛЮЧ ОТ DEEPGRAM 🔥
+    // 🔥 ВСТАВЬ СЮДА СВОЙ КЛЮЧ ОТ DEEPGRAM 🔥
     // ==========================================
     const DEEPGRAM_API_KEY = '21eed07deb14df55273746b0eb82d98606bd0e5b'; 
     // ==========================================
@@ -159,27 +192,24 @@
         const toggleBtn = document.getElementById('toggleBtn');
         const status = document.getElementById('status');
         const qrModal = document.getElementById('qrModal');
+        const speakBtn = document.getElementById('speakBtn');
 
         let mediaRecorder; 
         let socket;
         let isRecording = false;
         let audioContext = null; 
-        
-        // Переменные для мгновенного вывода (Streaming)
         let finalText = ""; 
         let interimText = "";
 
+        // --- 1. ЗАПИСЬ ГОЛОСА (DEEPGRAM) ---
         async function startRecording() {
-            if (DEEPGRAM_API_KEY === 'ВАШ_КЛЮЧ_ЗДЕСЬ' || !DEEPGRAM_API_KEY) {
+            if (DEEPGRAM_API_KEY === '21eed07deb14df55273746b0eb82d98606bd0e5b' || !DEEPGRAM_API_KEY) {
                 alert("Ошибка: Вы не вставили API-ключ Deepgram!");
                 return;
             }
 
             try {
-                // Очищаем текст перед новой записью (по желанию, чтобы не смешивать)
-                if (output.value.length < 5) finalText = ""; 
-                else finalText = output.value + " ";
-
+                if (output.value.length < 5) finalText = ""; else finalText = output.value + " ";
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
                 
                 if (!audioContext) audioContext = new AudioContext();
@@ -208,7 +238,7 @@
                             socket.send(arrayBuffer);
                         }
                     };
-                    mediaRecorder.start(250); // Отправляем кусочки по 250 мс
+                    mediaRecorder.start(250); 
                 };
 
                 socket.onmessage = (message) => {
@@ -217,14 +247,11 @@
                     
                     if (transcript) {
                         if (received.is_final) {
-                            // Если это финал предложения, добавляем в основной текст
                             finalText += transcript + " ";
                             interimText = "";
                         } else {
-                            // Если это промежуточный текст, показываем его
                             interimText = transcript;
                         }
-                        // Выводим на экран "Финальный текст + то, что говорится прямо сейчас"
                         output.value = finalText + interimText;
                         output.scrollTop = output.scrollHeight;
                         updateStats();
@@ -250,8 +277,6 @@
             toggleBtn.classList.remove('listening');
             status.textContent = "Готов к работе";
             status.style.color = "#4caf50";
-            
-            // Очищаем промежуточный текст при остановке
             output.value = finalText.trim(); 
             updateStats();
         }
@@ -266,42 +291,29 @@
             }
         });
 
-        // --- QR-КОД ---
-        let peer = null;
-        document.getElementById('connectPhoneBtn').addEventListener('click', () => {
-            qrModal.style.display = 'flex';
-            document.getElementById('qrcode').innerHTML = '';
+        // --- 2. ОЗВУЧКА (TTS) ---
+        speakBtn.addEventListener('click', () => {
+            const text = output.value;
+            if (!text) { alert("Введите текст для озвучки!"); return; }
             
-            const myPeerId = 'telepat-pc-' + Math.random().toString(36).substr(2, 6);
-            const currentUrl = window.location.href.split('?')[0];
-            const connectUrl = `${currentUrl}?connect=${myPeerId}`;
+            window.speechSynthesis.cancel(); // Останавливаем предыдущее чтение
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ru-RU';
+            utterance.rate = 1.0;
             
-            new QRCode(document.getElementById('qrcode'), { text: connectUrl, width: 180, height: 180 });
-            document.getElementById('manualLink').href = connectUrl;
-            document.getElementById('manualLink').textContent = connectUrl;
-
-            if (peer) peer.destroy();
-            peer = new Peer(myPeerId, peerOptions);
+            // Ищем русский голос
+            const voices = window.speechSynthesis.getVoices();
+            const ruVoice = voices.find(v => v.lang.includes('ru'));
+            if (ruVoice) utterance.voice = ruVoice;
             
-            peer.on('connection', (conn) => {
-                conn.on('data', (data) => {
-                    if (typeof data === 'string') {
-                        output.value += (output.value ? "\n" : "") + data; 
-                        finalText = output.value; // Синхронизируем
-                        updateStats();
-                        qrModal.style.display = 'none';
-                        alert("📥 Текст получен с телефона!");
-                    }
-                });
-            });
+            window.speechSynthesis.speak(utterance);
+            status.textContent = "🔊 Читаю текст...";
+            status.style.color = "#3498db";
+            
+            utterance.onend = () => { status.textContent = "Готов к работе"; status.style.color = "#4caf50"; };
         });
 
-        document.getElementById('closeQrBtn').addEventListener('click', () => {
-            qrModal.style.display = 'none';
-            if (peer) { peer.destroy(); peer = null; }
-        });
-
-        // --- ОСТАЛЬНЫЕ КНОПКИ ---
+        // --- 3. ПРОВЕРКА ОШИБОК (LANGUAGETOOL) ---
         document.getElementById('checkBtn').addEventListener('click', async () => {
             const text = output.value;
             if (!text.trim()) { alert("Введите текст!"); return; }
@@ -324,6 +336,7 @@
             } catch (error) { status.textContent = "❌ Ошибка (запустите node proxy.js)"; status.style.color = "#ff4d4d"; }
         });
 
+        // --- 4. ПЕРЕВОДЧИК ---
         document.getElementById('translateBtn').addEventListener('click', async () => {
             const text = output.value;
             const targetLang = document.getElementById('targetLang').value;
@@ -338,12 +351,10 @@
                     finalText = output.value;
                     updateStats(); status.textContent = "✅ Переведено!"; status.style.color = "#4caf50";
                 } else { throw new Error("Ошибка"); }
-            } catch (error) { 
-                alert("Ошибка перевода: " + error.message);
-                status.textContent = "❌ Ошибка перевода"; status.style.color = "#ff4d4d"; 
-            }
+            } catch (error) { status.textContent = "❌ Ошибка перевода"; status.style.color = "#ff4d4d"; }
         });
 
+        // --- 5. ЭКСПОРТ В EXCEL ---
         document.getElementById('excelBtn').addEventListener('click', () => {
             if (!output.value) return;
             const rows = output.value.split('\n').map(row => row.split(',').map(cell => `"${cell.trim().replace(/"/g, '""')}"`).join(';'));
@@ -352,6 +363,26 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
+        // --- 6. СУБТИТРЫ (SRT) ---
+        document.getElementById('srtBtn').addEventListener('click', () => {
+            if (!output.value) return;
+            const sentences = output.value.match(/[^.!?]+[.!?]+/g) || [output.value];
+            let srt = ""; let startTime = 0;
+            sentences.forEach((sentence, i) => {
+                const start = new Date(startTime * 1000).toISOString().substr(11, 12).replace('.', ',');
+                startTime += 5;
+                const end = new Date(startTime * 1000).toISOString().substr(11, 12).replace('.', ',');
+                srt += `${i + 1}\n${start} --> ${end}\n${sentence.trim()}\n\n`;
+            });
+            const blob = new Blob([srt], { type: 'text/srt;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Telepat_Subs_${Date.now()}.srt`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        });
+
+        // --- 7. PDF (ПЕЧАТЬ) ---
+        document.getElementById('pdfBtn').addEventListener('click', () => { window.print(); });
+
+        // --- ВСПОМОГАТЕЛЬНЫЕ ---
         function updateStats() {
             const text = output.value;
             document.getElementById('statWords').textContent = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
@@ -375,6 +406,31 @@
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Telepat_${Date.now()}.txt`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
+
+        // QR
+        let peer = null;
+        document.getElementById('connectPhoneBtn').addEventListener('click', () => {
+            qrModal.style.display = 'flex';
+            document.getElementById('qrcode').innerHTML = '';
+            const myPeerId = 'telepat-pc-' + Math.random().toString(36).substr(2, 6);
+            const currentUrl = window.location.href.split('?')[0];
+            const connectUrl = `${currentUrl}?connect=${myPeerId}`;
+            new QRCode(document.getElementById('qrcode'), { text: connectUrl, width: 180, height: 180 });
+            document.getElementById('manualLink').href = connectUrl;
+            document.getElementById('manualLink').textContent = connectUrl;
+            if (peer) peer.destroy();
+            peer = new Peer(myPeerId, peerOptions);
+            peer.on('connection', (conn) => {
+                conn.on('data', (data) => {
+                    if (typeof data === 'string') {
+                        output.value += (output.value ? "\n" : "") + data; 
+                        finalText = output.value; updateStats();
+                        qrModal.style.display = 'none'; alert("📥 Текст получен с телефона!");
+                    }
+                });
+            });
+        });
+        document.getElementById('closeQrBtn').addEventListener('click', () => { qrModal.style.display = 'none'; if (peer) { peer.destroy(); peer = null; } });
 
         updateStats();
     }
