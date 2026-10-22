@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Telepat Voice - Ultimate</title>
     <!-- Подключаем библиотеки для QR и P2P -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -13,7 +14,7 @@
         
         /* Основной интерфейс ПК */
         .app-container { background: var(--panel); width: 100%; max-width: 950px; border-radius: 20px; padding: 20px; border: 1px solid var(--border); display: flex; flex-direction: column; box-sizing: border-box; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 15px; align-items: center; }
         .header h1 { font-size: 20px; margin: 0; color: #ff4d4d; }
         
         textarea { width: 100%; height: 350px; padding: 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 16px; resize: vertical; margin-bottom: 15px; outline: none; line-height: 1.6; box-sizing: border-box; }
@@ -46,7 +47,7 @@
         #qrcode { display: flex; justify-content: center; margin: 20px 0; background: white; padding: 15px; border-radius: 10px; }
 
         /* Интерфейс для телефона (скрыт по умолчанию) */
-        #phone-interface { display: none; background: var(--panel); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; text-align: center; }
+        #phone-interface { display: none; background: var(--panel); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; text-align: center; border: 1px solid var(--border); }
         #phone-interface h2 { color: #2ecc71; }
         #phone-interface textarea { height: 200px; }
         #phone-status { margin-top: 15px; color: #ffa500; font-weight: bold; }
@@ -112,7 +113,7 @@
         <h2>📱 Подключение телефона</h2>
         <p>Наведите камеру телефона на QR-код <b>ИЛИ</b> скопируйте ссылку ниже.</p>
         <div id="qrcode"></div>
-        <div id="manual-link-box" style="background: #111; padding: 10px; border-radius: 8px; font-size: 12px; word-break: break-all; margin-bottom: 15px; display: none;">
+        <div id="manual-link-box" style="background: #111; padding: 10px; border-radius: 8px; font-size: 12px; word-break: break-all; margin-bottom: 15px;">
             <a id="manualLink" href="#" target="_blank" style="color: #2ecc71; text-decoration: none;"></a>
         </div>
         <button class="action-btn btn-gray" id="closeQrBtn" style="width: 100%;">Закрыть</button>
@@ -121,10 +122,24 @@
 
 <script type="module">
     // ==========================================
-    // 🔥 КЛЮЧ ОТ DEEPGRAM 🔥
+    // 🔥 ВСТАВЬ СЮДА СВОЙ НОВЫЙ КЛЮЧ ОТ DEEPGRAM 🔥
     // ==========================================
-    const DEEPGRAM_API_KEY = '21eed07deb14df55273746b0eb82d98606bd0e5b'; // <--- ВСТАВЬ СЮДА
+    const DEEPGRAM_API_KEY = 'ВАШ_КЛЮЧ_ЗДЕСЬ'; 
     // ==========================================
+
+    // НАСТРОЙКИ СТАБИЛЬНОГО СЕРВЕРА ДЛЯ P2P СВЯЗИ
+    const peerOptions = {
+        host: '1.peerjs.com',
+        port: 443,
+        path: '/',
+        secure: true,
+        config: {
+            'iceServers': [
+                { url: 'stun:stun.l.google.com:19302' },
+                { url: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
+    };
 
     const urlParams = new URLSearchParams(window.location.search);
     const connectId = urlParams.get('connect');
@@ -136,7 +151,7 @@
         document.getElementById('pc-interface').style.display = 'none';
         document.getElementById('phone-interface').style.display = 'block';
 
-        let phonePeer = new Peer();
+        let phonePeer = new Peer(peerOptions); // ИСПОЛЬЗУЕМ НОВЫЙ СЕРВЕР
         phonePeer.on('open', () => {
             const conn = phonePeer.connect(connectId);
             conn.on('open', () => {
@@ -173,7 +188,7 @@
         let audioContext = null; 
 
         async function startRecording() {
-            if (DEEPGRAM_API_KEY === 'ВАШ_КЛЮЧ_ЗДЕСЬ' || !DEEPGRAM_API_KEY) {
+            if (DEEPGRAM_API_KEY === '21eed07deb14df55273746b0eb82d98606bd0e5b' || !DEEPGRAM_API_KEY) {
                 alert("Ошибка: Вы не вставили API-ключ Deepgram!");
                 return;
             }
@@ -263,14 +278,12 @@
             
             new QRCode(document.getElementById('qrcode'), { text: connectUrl, width: 180, height: 180 });
             
-            // Показываем ссылку на случай, если QR не сработает
-            document.getElementById('manual-link-box').style.display = 'block';
-            const linkElem = document.getElementById('manualLink');
-            linkElem.href = connectUrl;
-            linkElem.textContent = connectUrl;
+            document.getElementById('manualLink').href = connectUrl;
+            document.getElementById('manualLink').textContent = connectUrl;
 
             if (peer) peer.destroy();
-            peer = new Peer(myPeerId);
+            // ИСПОЛЬЗУЕМ ТОТ ЖЕ СТАБИЛЬНЫЙ СЕРВЕР
+            peer = new Peer(myPeerId, peerOptions);
             
             peer.on('connection', (conn) => {
                 conn.on('data', (data) => {
@@ -289,7 +302,7 @@
             if (peer) { peer.destroy(); peer = null; }
         });
 
-        // --- ОСТАЛЬНЫЕ КНОПКИ (Ошибки, Перевод, Excel и т.д.) ---
+        // --- ОСТАЛЬНЫЕ КНОПКИ ---
         document.getElementById('checkBtn').addEventListener('click', async () => {
             const text = output.value;
             if (!text.trim()) { alert("Введите текст!"); return; }
@@ -325,7 +338,10 @@
                     output.value = `=== ПЕРЕВОД ===\n${data.responseData.translatedText}\n\n=== ОРИГИНАЛ ===\n${text}`;
                     updateStats(); status.textContent = "✅ Переведено!"; status.style.color = "#4caf50";
                 } else { throw new Error("Ошибка"); }
-            } catch (error) { status.textContent = "❌ Ошибка перевода"; status.style.color = "#ff4d4d"; }
+            } catch (error) { 
+                alert("Ошибка перевода: " + error.message);
+                status.textContent = "❌ Ошибка перевода"; status.style.color = "#ff4d4d"; 
+            }
         });
 
         document.getElementById('excelBtn').addEventListener('click', () => {
