@@ -4,8 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Telepat Voice - Pro Max</title>
+    
+    <!-- Библиотеки для связи и QR -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <!-- 🔥 ВОЗВРАЩАЕМ НЕЙРОСЕТЕВУЮ ОЗВУЧКУ (PIPER TTS) -->
+    <script type="module">
+        import { PiperTTS } from 'https://esm.sh/@mbreza/piper-tts-web@1.0.4';
+        window.PiperTTS = PiperTTS;
+    </script>
 
     <style>
         :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222; }
@@ -25,7 +33,6 @@
         .action-btn { flex: 1; min-width: 110px; padding: 12px 5px; border-radius: 8px; border: none; color: white; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; position: relative; }
         .action-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
         
-        /* Цвета кнопок */
         .btn-green { background: #2ecc71; }
         .btn-blue { background: #3498db; }
         .btn-purple { background: #9b59b6; }
@@ -33,35 +40,21 @@
         .btn-orange { background: #e67e22; }
         .btn-red { background: #e74c3c; }
 
-        .lang-select { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: white; font-size: 14px; outline: none; font-weight: bold; cursor: pointer; }
+        .lang-select, .voice-select { padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: white; font-size: 14px; outline: none; font-weight: bold; cursor: pointer; }
         .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; background-color: #ff4d4d; transition: 0.3s; }
         .btn:disabled { background-color: #555; cursor: not-allowed; }
         .btn.listening { background-color: #e74c3c; animation: pulse 1.5s infinite; }
         .status { text-align: center; margin-top: 10px; font-size: 15px; color: #4caf50; font-weight: bold; }
 
-        /* 🛠️ ПОДСКАЗКИ ПРИ НАВЕДЕНИИ */
+        /* Подсказки при наведении */
         .has-tooltip::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 130%;
-            left: 50%;
-            transform: translateX(-50%) translateY(10px);
-            background: rgba(20, 20, 20, 0.95);
-            color: #fff;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: 0.2s;
-            z-index: 9999;
-            border: 1px solid #555;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            content: attr(data-tooltip); position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%) translateY(10px);
+            background: rgba(20, 20, 20, 0.95); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px;
+            white-space: nowrap; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 9999;
+            border: 1px solid #555; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
         .has-tooltip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* Модальные окна */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
         .modal { background: #2b2b2b; padding: 30px; border-radius: 20px; text-align: center; max-width: 400px; border: 1px solid #555; }
         .modal h2 { color: #ff4d4d; margin-top: 0; font-size: 22px; }
@@ -100,17 +93,17 @@
         <div class="stat-item"><span>Пробелов:</span><span class="stat-value" id="statSpaces">0</span></div>
     </div>
 
-    <!-- Функции обработки текста -->
+    <!-- Панель инструментов -->
     <div class="actions-row">
-        <button class="action-btn btn-blue has-tooltip" id="checkBtn" data-tooltip="🔍 Проверить текст на грамматические ошибки и запятые (LanguageTool)">🔍 Найти ошибки</button>
-        <button class="action-btn btn-green has-tooltip" id="cleanBtn" data-tooltip="✨ Удалить лишние пробелы и расставить заглавные буквы в начале предложений">✨ Очистить текст</button>
-        <button class="action-btn btn-blue has-tooltip" id="translateBtn" data-tooltip="🌐 Перевести текст на выбранный язык (переводятся первые 500 символов бесплатно)">🌐 Перевести</button>
+        <button class="action-btn btn-blue has-tooltip" id="checkBtn" data-tooltip="🔍 Проверить текст на ошибки (LanguageTool)">🔍 Найти ошибки</button>
+        <button class="action-btn btn-green has-tooltip" id="cleanBtn" data-tooltip="✨ Удалить лишние пробелы и заглавные буквы">✨ Очистить</button>
+        <button class="action-btn btn-blue has-tooltip" id="translateBtn" data-tooltip="🌐 Перевести текст на другой язык">🌐 Перевести</button>
     </div>
 
     <!-- Выбор языка и экспорт -->
     <div class="actions-row" style="background: #222; padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
-        <span style="margin-right: 10px; font-size: 14px; font-weight: bold; color: #aaa;">Язык:</span>
-        <select id="targetLang" class="lang-select">
+        <span style="margin-right: 5px; font-size: 14px; font-weight: bold; color: #aaa;">Язык:</span>
+        <select id="targetLang" class="lang-select" style="margin-right: 10px;">
             <option value="en">🇬🇧 Английский</option>
             <option value="zh">🇨🇳 Китайский</option>
             <option value="ja">🇯🇵 Японский</option>
@@ -119,19 +112,26 @@
             <option value="es">🇪🇸 Испанский</option>
         </select>
         
-        <button class="action-btn btn-orange has-tooltip" id="excelBtn" data-tooltip="📊 Скачать файл для Excel (разделение по запятым на колонки)">📊 В Excel</button>
-        <button class="action-btn btn-purple has-tooltip" id="srtBtn" data-tooltip="📺 Создать файл субтитров (.srt) для видео">📺 Субтитры</button>
-        <button class="action-btn btn-orange has-tooltip" id="pdfBtn" data-tooltip="📄 Распечатать текст или сохранить в PDF">📄 PDF</button>
+        <button class="action-btn btn-orange has-tooltip" id="excelBtn" data-tooltip="📊 Скачать для Excel (разделение по запятым)">📊 В Excel</button>
+        <button class="action-btn btn-purple has-tooltip" id="srtBtn" data-tooltip="📺 Создать файл субтитров (.srt)">📺 Субтитры</button>
+        <button class="action-btn btn-orange has-tooltip" id="pdfBtn" data-tooltip="📄 Сохранить в PDF">📄 PDF</button>
     </div>
 
     <!-- Озвучка и копирование -->
-    <div class="actions-row">
-        <button class="action-btn btn-green has-tooltip" id="speakBtn" data-tooltip="🔊 Прочитать текст вслух (системный голос)">🔊 Озвучить</button>
-        <button class="action-btn btn-purple has-tooltip" id="copyBtn" data-tooltip="📋 Скопировать весь текст в буфер обмена">📋 Копировать</button>
-        <button class="action-btn btn-gray has-tooltip" id="downloadBtn" data-tooltip="💾 Скачать обычный текстовый файл (.txt)">💾 .txt</button>
+    <div class="actions-row" style="background: #1e1e1e; padding: 10px; border-radius: 10px; border: 1px solid #3498db;">
+        <!-- Возвращаем выбор нейросетевых голосов -->
+        <select id="voiceSelect" class="voice-select has-tooltip" data-tooltip="Выберите нейросетевой голос для озвучки" style="flex: 1;">
+            <option value="irina">👩 Ирина (Женский)</option>
+            <option value="denis">👨 Денис (Мужской)</option>
+            <option value="dmitri">👨 Дмитрий (Мужской)</option>
+            <option value="ruslan">👨 Руслан (Мужской)</option>
+        </select>
+        <button class="action-btn btn-green has-tooltip" id="speakBtn" data-tooltip="🔊 Озвучить текст нейросетевым голосом" style="flex: 1;">🔊 Озвучить</button>
+        <button class="action-btn btn-purple has-tooltip" id="copyBtn" data-tooltip="📋 Скопировать текст" style="flex: 0 0 100px;">📋 Копировать</button>
+        <button class="action-btn btn-gray has-tooltip" id="downloadBtn" data-tooltip="💾 Скачать .txt файл" style="flex: 0 0 100px;">💾 .txt</button>
     </div>
     
-    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Включить микрофон. Говорите, текст будет появляться на лету.">🎤 Начать запись</button>
+    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Включить микрофон. Говорите, текст появится на лету.">🎤 Начать запись</button>
     <div class="status" id="status">Готов к работе</div>
 </div>
 
@@ -151,7 +151,7 @@
     // ==========================================
     // 🔥 ВСТАВЬ СЮДА СВОЙ КЛЮЧ ОТ DEEPGRAM 🔥
     // ==========================================
-    const DEEPGRAM_API_KEY = '21eed07deb14df55273746b0eb82d98606bd0e5b'; 
+    const DEEPGRAM_API_KEY = 'ВАШ_КЛЮЧ_ЗДЕСЬ'; 
     // ==========================================
 
     const peerOptions = {
@@ -192,7 +192,9 @@
         const toggleBtn = document.getElementById('toggleBtn');
         const status = document.getElementById('status');
         const qrModal = document.getElementById('qrModal');
+        
         const speakBtn = document.getElementById('speakBtn');
+        const voiceSelect = document.getElementById('voiceSelect');
 
         let mediaRecorder; 
         let socket;
@@ -201,7 +203,7 @@
         let finalText = ""; 
         let interimText = "";
 
-        // --- 1. ЗАПИСЬ ГОЛОСА (DEEPGRAM) ---
+        // 1. ЗАПИСЬ ГОЛОСА (DEEPGRAM)
         async function startRecording() {
             if (DEEPGRAM_API_KEY === '21eed07deb14df55273746b0eb82d98606bd0e5b' || !DEEPGRAM_API_KEY) {
                 alert("Ошибка: Вы не вставили API-ключ Deepgram!");
@@ -291,29 +293,60 @@
             }
         });
 
-        // --- 2. ОЗВУЧКА (TTS) ---
-        speakBtn.addEventListener('click', () => {
+        // 2. НЕЙРОСЕТЕВАЯ ОЗВУЧКА (PIPER TTS)
+        let isSpeaking = false;
+        let currentAudio = null;
+
+        speakBtn.addEventListener('click', async () => {
             const text = output.value;
-            if (!text) { alert("Введите текст для озвучки!"); return; }
-            
-            window.speechSynthesis.cancel(); // Останавливаем предыдущее чтение
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'ru-RU';
-            utterance.rate = 1.0;
-            
-            // Ищем русский голос
-            const voices = window.speechSynthesis.getVoices();
-            const ruVoice = voices.find(v => v.lang.includes('ru'));
-            if (ruVoice) utterance.voice = ruVoice;
-            
-            window.speechSynthesis.speak(utterance);
-            status.textContent = "🔊 Читаю текст...";
-            status.style.color = "#3498db";
-            
-            utterance.onend = () => { status.textContent = "Готов к работе"; status.style.color = "#4caf50"; };
+            if (!text || text.trim() === "") { alert("Введите текст для озвучки!"); return; }
+
+            if (isSpeaking) {
+                if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+                isSpeaking = false; speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = '';
+                status.textContent = 'Остановлено.'; status.style.color = "#4caf50"; return;
+            }
+
+            const selectedVoiceId = voiceSelect.value; 
+            speakBtn.textContent = '⏳ Загрузка...'; speakBtn.style.backgroundColor = '#ffa500';
+            status.textContent = `Загрузка нейросети (${selectedVoiceId})...`;
+            status.style.color = "#ffa500";
+
+            try {
+                if (!window.PiperTTS) throw new Error("Библиотека TTS не загрузилась. Проверьте интернет.");
+
+                // Используем прямые ссылки на модели
+                const baseHfUrl = `https://huggingface.co/rhasspy/piper-voices/resolve/main/ru/ru_RU/${selectedVoiceId}/medium/`;
+                const modelUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx`;
+                const configUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx.json`;
+
+                const voice = await window.PiperTTS.loadVoice({ modelUrl, configUrl });
+                status.textContent = 'Генерация звука... (пожалуйста, подождите)';
+                
+                const wavData = await voice.synthesize(text);
+                
+                const blob = new Blob([wavData], { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                
+                currentAudio = new Audio(url);
+                currentAudio.onended = () => { 
+                    isSpeaking = false; speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = '';
+                    status.textContent = 'Готов к работе'; status.style.color = "#4caf50";
+                };
+                currentAudio.play();
+                
+                isSpeaking = true; speakBtn.textContent = '⏹ Стоп'; speakBtn.style.backgroundColor = '#e74c3c';
+                status.textContent = 'Воспроизведение...'; status.style.color = "#3498db";
+
+            } catch (error) {
+                console.error("ОШИБКА TTS:", error); 
+                alert("Ошибка озвучки:\n" + error.message);
+                status.textContent = 'Ошибка озвучки'; status.style.color = "#ff4d4d";
+                speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = ''; isSpeaking = false;
+            }
         });
 
-        // --- 3. ПРОВЕРКА ОШИБОК (LANGUAGETOOL) ---
+        // 3. ПРОВЕРКА ОШИБОК (LANGUAGETOOL)
         document.getElementById('checkBtn').addEventListener('click', async () => {
             const text = output.value;
             if (!text.trim()) { alert("Введите текст!"); return; }
@@ -336,7 +369,7 @@
             } catch (error) { status.textContent = "❌ Ошибка (запустите node proxy.js)"; status.style.color = "#ff4d4d"; }
         });
 
-        // --- 4. ПЕРЕВОДЧИК ---
+        // 4. ПЕРЕВОДЧИК
         document.getElementById('translateBtn').addEventListener('click', async () => {
             const text = output.value;
             const targetLang = document.getElementById('targetLang').value;
@@ -354,7 +387,7 @@
             } catch (error) { status.textContent = "❌ Ошибка перевода"; status.style.color = "#ff4d4d"; }
         });
 
-        // --- 5. ЭКСПОРТ В EXCEL ---
+        // 5. ЭКСПОРТ В EXCEL
         document.getElementById('excelBtn').addEventListener('click', () => {
             if (!output.value) return;
             const rows = output.value.split('\n').map(row => row.split(',').map(cell => `"${cell.trim().replace(/"/g, '""')}"`).join(';'));
@@ -363,7 +396,7 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
-        // --- 6. СУБТИТРЫ (SRT) ---
+        // 6. СУБТИТРЫ
         document.getElementById('srtBtn').addEventListener('click', () => {
             if (!output.value) return;
             const sentences = output.value.match(/[^.!?]+[.!?]+/g) || [output.value];
@@ -379,10 +412,10 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
-        // --- 7. PDF (ПЕЧАТЬ) ---
+        // 7. PDF (ПЕЧАТЬ)
         document.getElementById('pdfBtn').addEventListener('click', () => { window.print(); });
 
-        // --- ВСПОМОГАТЕЛЬНЫЕ ---
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
         function updateStats() {
             const text = output.value;
             document.getElementById('statWords').textContent = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
