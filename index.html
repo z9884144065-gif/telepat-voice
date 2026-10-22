@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Ironclad</title>
+    <title>Telepat Voice - Clean</title>
     
+    <!-- Только библиотеки для связи (никаких тяжелых нейросетей для озвучки!) -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
@@ -71,7 +72,7 @@
 
 <div class="app-container" id="pc-interface">
     <div class="header">
-        <h1>🎙️ Telepat Voice (Ironclad)</h1>
+        <h1>🎙️ Telepat Voice (Clean)</h1>
         <button class="action-btn btn-green has-tooltip" id="connectPhoneBtn" style="flex: 0 0 150px;" data-tooltip="Показать QR-код для передачи текста с телефона">📱 Телефон</button>
     </div>
     
@@ -101,14 +102,14 @@
             <option value="es">🇪🇸 Испанский</option>
         </select>
         
-        <button class="action-btn btn-orange has-tooltip" id="excelBtn" data-tooltip="📊 Скачать для Excel (разделение по запятым)">📊 В Excel</button>
+        <button class="action-btn btn-orange has-tooltip" id="excelBtn" data-tooltip="📊 Скачать для Excel">📊 В Excel</button>
         <button class="action-btn btn-purple has-tooltip" id="srtBtn" data-tooltip="📺 Создать файл субтитров (.srt)">📺 Субтитры</button>
         <button class="action-btn btn-orange has-tooltip" id="pdfBtn" data-tooltip="📄 Сохранить в PDF">📄 PDF</button>
     </div>
 
     <div class="actions-row" style="background: #1e1e1e; padding: 10px; border-radius: 10px; border: 1px solid #3498db;">
-        <select id="voiceSelect" class="voice-select has-tooltip" data-tooltip="Выберите системный голос" style="flex: 1;">
-            <option value="">Загрузка голосов Windows...</option>
+        <select id="voiceSelect" class="voice-select has-tooltip" data-tooltip="Выберите голос" style="flex: 1;">
+            <option value="">Загрузка голосов...</option>
         </select>
         <button class="action-btn btn-green has-tooltip" id="speakBtn" data-tooltip="🔊 Озвучить текст" style="flex: 1;">🔊 Озвучить</button>
         <button class="action-btn btn-purple has-tooltip" id="copyBtn" data-tooltip="📋 Скопировать текст" style="flex: 0 0 100px;">📋 Копировать</button>
@@ -133,7 +134,7 @@
 
 <script type="module">
     // 🔥 КЛЮЧ ОТ DEEPGRAM
-    const DEEPGRAM_API_KEY = 'ВАШ_КЛЮЧ_ЗДЕСЬ'; 
+    const DEEPGRAM_API_KEY = '21eed07deb14df55273746b0eb82d98606bd0e5b'; 
 
     const peerOptions = {
         host: '1.peerjs.com', port: 443, path: '/', secure: true,
@@ -175,19 +176,16 @@
         function loadVoices() {
             const voices = window.speechSynthesis.getVoices();
             voiceSelect.innerHTML = '';
-            
-            // Ищем русские голоса
             const ruVoices = voices.filter(v => v.lang.includes('ru'));
             
             if (ruVoices.length === 0) {
                 const option = document.createElement('option');
-                option.textContent = "Системный голос";
+                option.textContent = "Системный голос (по умолчанию)";
                 voiceSelect.appendChild(option);
             } else {
                 ruVoices.forEach(voice => {
                     const option = document.createElement('option');
                     option.value = voice.name;
-                    // Красиво оформляем
                     let gender = voice.name.toLowerCase().includes('male') || voice.name.toLowerCase().includes('dmitry') ? '👨 ' : '👩 ';
                     option.textContent = gender + voice.name;
                     voiceSelect.appendChild(option);
@@ -211,9 +209,8 @@
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'ru-RU';
-            utterance.rate = 1.0; // Скорость
+            utterance.rate = 1.0;
 
-            // Выбираем голос
             const selectedVoiceName = voiceSelect.value;
             const voices = window.speechSynthesis.getVoices();
             const selectedVoice = voices.find(v => v.name === selectedVoiceName);
@@ -234,7 +231,7 @@
         let finalText = ""; let interimText = "";
 
         async function startRecording() {
-            if (DEEPGRAM_API_KEY === '21eed07deb14df55273746b0eb82d98606bd0e5b' || !DEEPGRAM_API_KEY) {
+            if (DEEPGRAM_API_KEY === 'ВАШ_КЛЮЧ_ЗДЕСЬ' || !DEEPGRAM_API_KEY) {
                 alert("Ошибка: Вы не вставили API-ключ Deepgram!"); return;
             }
             try {
