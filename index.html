@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Ultimate</title>
-    <!-- Подключаем библиотеки для QR и P2P -->
+    <title>Telepat Voice - Live Instant</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
@@ -12,12 +11,11 @@
         :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; }
         
-        /* Основной интерфейс ПК */
         .app-container { background: var(--panel); width: 100%; max-width: 950px; border-radius: 20px; padding: 20px; border: 1px solid var(--border); display: flex; flex-direction: column; box-sizing: border-box; }
         .header { display: flex; justify-content: space-between; margin-bottom: 15px; align-items: center; }
         .header h1 { font-size: 20px; margin: 0; color: #ff4d4d; }
         
-        textarea { width: 100%; height: 350px; padding: 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 16px; resize: vertical; margin-bottom: 15px; outline: none; line-height: 1.6; box-sizing: border-box; }
+        textarea { width: 100%; height: 350px; padding: 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 18px; resize: vertical; margin-bottom: 15px; outline: none; line-height: 1.6; box-sizing: border-box; }
         
         .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px; background: var(--stat-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border); }
         .stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #ccc; }
@@ -40,13 +38,11 @@
         .status { text-align: center; margin-top: 10px; font-size: 15px; color: #4caf50; font-weight: bold; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
 
-        /* Модальное окно QR-кода */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
         .modal { background: #2b2b2b; padding: 30px; border-radius: 20px; text-align: center; max-width: 400px; border: 1px solid #555; }
         .modal h2 { color: #ff4d4d; margin-top: 0; font-size: 22px; }
         #qrcode { display: flex; justify-content: center; margin: 20px 0; background: white; padding: 15px; border-radius: 10px; }
 
-        /* Интерфейс для телефона (скрыт по умолчанию) */
         #phone-interface { display: none; background: var(--panel); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; text-align: center; border: 1px solid var(--border); }
         #phone-interface h2 { color: #2ecc71; }
         #phone-interface textarea { height: 200px; }
@@ -57,7 +53,6 @@
 </head>
 <body>
 
-<!-- ЭКРАН ДЛЯ ТЕЛЕФОНА -->
 <div id="phone-interface">
     <h2>📱 Отправка на ПК</h2>
     <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">Вставьте текст ниже и нажмите кнопку.</p>
@@ -66,13 +61,13 @@
     <div id="phone-status">Ожидание связи с ПК...</div>
 </div>
 
-<!-- ЭКРАН ДЛЯ КОМПЬЮТЕРА -->
 <div class="app-container" id="pc-interface">
     <div class="header">
-        <h1>🎙️ Telepat Voice (Ultimate)</h1>
+        <h1>🎙️ Telepat Voice (Instant)</h1>
         <button class="action-btn btn-green" id="connectPhoneBtn" style="flex: 0 0 150px;">📱 Телефон</button>
     </div>
     
+    <!-- Поле, в котором текст будет появляться на лету -->
     <textarea id="output" spellcheck="true" placeholder="Нажмите 'Начать запись' и просто говорите..."></textarea>
     
     <div class="stats-grid">
@@ -107,7 +102,6 @@
     <div class="status" id="status">Готов к работе</div>
 </div>
 
-<!-- Окно с QR-кодом -->
 <div class="modal-overlay" id="qrModal">
     <div class="modal">
         <h2>📱 Подключение телефона</h2>
@@ -124,34 +118,23 @@
     // ==========================================
     // 🔥 ВСТАВЬ СЮДА СВОЙ НОВЫЙ КЛЮЧ ОТ DEEPGRAM 🔥
     // ==========================================
-    const DEEPGRAM_API_KEY = 'ВАШ_КЛЮЧ_ЗДЕСЬ'; 
+    const DEEPGRAM_API_KEY = '21eed07deb14df55273746b0eb82d98606bd0e5b'; 
     // ==========================================
 
-    // НАСТРОЙКИ СТАБИЛЬНОГО СЕРВЕРА ДЛЯ P2P СВЯЗИ
     const peerOptions = {
-        host: '1.peerjs.com',
-        port: 443,
-        path: '/',
-        secure: true,
-        config: {
-            'iceServers': [
-                { url: 'stun:stun.l.google.com:19302' },
-                { url: 'stun:stun1.l.google.com:19302' }
-            ]
-        }
+        host: '1.peerjs.com', port: 443, path: '/', secure: true,
+        config: { 'iceServers': [{ url: 'stun:stun.cloudflare.com:3478' }, { url: 'turn:turn.cloudflare.com:3478', username: 'cloudflare', credential: 'cloudflare' }, { url: 'turn:turn.cloudflare.com:3478?transport=tcp', username: 'cloudflare', credential: 'cloudflare' }] }
     };
 
     const urlParams = new URLSearchParams(window.location.search);
     const connectId = urlParams.get('connect');
 
-    // ==========================================
-    // РЕЖИМ ТЕЛЕФОНА (Если открыто по QR-коду)
-    // ==========================================
     if (connectId) {
+        // РЕЖИМ ТЕЛЕФОНА
         document.getElementById('pc-interface').style.display = 'none';
         document.getElementById('phone-interface').style.display = 'block';
 
-        let phonePeer = new Peer(peerOptions); // ИСПОЛЬЗУЕМ НОВЫЙ СЕРВЕР
+        let phonePeer = new Peer(peerOptions);
         phonePeer.on('open', () => {
             const conn = phonePeer.connect(connectId);
             conn.on('open', () => {
@@ -160,7 +143,6 @@
                 const btn = document.getElementById('phone-send-btn');
                 btn.disabled = false;
                 btn.textContent = "Отправить на ПК";
-                
                 btn.onclick = () => {
                     const text = document.getElementById('phone-text').value;
                     if (text && conn.open) {
@@ -171,29 +153,33 @@
                 };
             });
         });
-    } 
-    // ==========================================
-    // РЕЖИМ КОМПЬЮТЕРА
-    // ==========================================
-    else {
+    } else {
+        // РЕЖИМ КОМПЬЮТЕРА
         const output = document.getElementById('output');
         const toggleBtn = document.getElementById('toggleBtn');
         const status = document.getElementById('status');
         const qrModal = document.getElementById('qrModal');
 
-        // --- ПОТОКОВАЯ ЗАПИСЬ DEEPGRAM ---
         let mediaRecorder; 
         let socket;
         let isRecording = false;
         let audioContext = null; 
+        
+        // Переменные для мгновенного вывода (Streaming)
+        let finalText = ""; 
+        let interimText = "";
 
         async function startRecording() {
-            if (DEEPGRAM_API_KEY === '21eed07deb14df55273746b0eb82d98606bd0e5b' || !DEEPGRAM_API_KEY) {
+            if (DEEPGRAM_API_KEY === 'ВАШ_КЛЮЧ_ЗДЕСЬ' || !DEEPGRAM_API_KEY) {
                 alert("Ошибка: Вы не вставили API-ключ Deepgram!");
                 return;
             }
 
             try {
+                // Очищаем текст перед новой записью (по желанию, чтобы не смешивать)
+                if (output.value.length < 5) finalText = ""; 
+                else finalText = output.value + " ";
+
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
                 
                 if (!audioContext) audioContext = new AudioContext();
@@ -209,7 +195,7 @@
                 ]);
 
                 socket.onopen = () => {
-                    status.textContent = "🔴 Слушаю... Говорите!";
+                    status.textContent = "🔴 Слушаю... (Мгновенный текст)";
                     status.style.color = "#ff4d4d";
                     toggleBtn.textContent = "⏹ Остановить";
                     toggleBtn.classList.add('listening');
@@ -222,14 +208,24 @@
                             socket.send(arrayBuffer);
                         }
                     };
-                    mediaRecorder.start(250); 
+                    mediaRecorder.start(250); // Отправляем кусочки по 250 мс
                 };
 
                 socket.onmessage = (message) => {
                     const received = JSON.parse(message.data);
                     const transcript = received.channel?.alternatives[0]?.transcript;
-                    if (transcript && received.is_final) {
-                        output.value += (output.value ? " " : "") + transcript;
+                    
+                    if (transcript) {
+                        if (received.is_final) {
+                            // Если это финал предложения, добавляем в основной текст
+                            finalText += transcript + " ";
+                            interimText = "";
+                        } else {
+                            // Если это промежуточный текст, показываем его
+                            interimText = transcript;
+                        }
+                        // Выводим на экран "Финальный текст + то, что говорится прямо сейчас"
+                        output.value = finalText + interimText;
                         output.scrollTop = output.scrollHeight;
                         updateStats();
                     }
@@ -254,6 +250,10 @@
             toggleBtn.classList.remove('listening');
             status.textContent = "Готов к работе";
             status.style.color = "#4caf50";
+            
+            // Очищаем промежуточный текст при остановке
+            output.value = finalText.trim(); 
+            updateStats();
         }
 
         toggleBtn.addEventListener('click', () => {
@@ -266,7 +266,7 @@
             }
         });
 
-        // --- ГЕНЕРАЦИЯ QR-КОДА ---
+        // --- QR-КОД ---
         let peer = null;
         document.getElementById('connectPhoneBtn').addEventListener('click', () => {
             qrModal.style.display = 'flex';
@@ -277,18 +277,17 @@
             const connectUrl = `${currentUrl}?connect=${myPeerId}`;
             
             new QRCode(document.getElementById('qrcode'), { text: connectUrl, width: 180, height: 180 });
-            
             document.getElementById('manualLink').href = connectUrl;
             document.getElementById('manualLink').textContent = connectUrl;
 
             if (peer) peer.destroy();
-            // ИСПОЛЬЗУЕМ ТОТ ЖЕ СТАБИЛЬНЫЙ СЕРВЕР
             peer = new Peer(myPeerId, peerOptions);
             
             peer.on('connection', (conn) => {
                 conn.on('data', (data) => {
                     if (typeof data === 'string') {
                         output.value += (output.value ? "\n" : "") + data; 
+                        finalText = output.value; // Синхронизируем
                         updateStats();
                         qrModal.style.display = 'none';
                         alert("📥 Текст получен с телефона!");
@@ -336,6 +335,7 @@
                 const data = await response.json();
                 if (data.responseData && data.responseData.translatedText) {
                     output.value = `=== ПЕРЕВОД ===\n${data.responseData.translatedText}\n\n=== ОРИГИНАЛ ===\n${text}`;
+                    finalText = output.value;
                     updateStats(); status.textContent = "✅ Переведено!"; status.style.color = "#4caf50";
                 } else { throw new Error("Ошибка"); }
             } catch (error) { 
@@ -365,7 +365,7 @@
             let text = output.value.replace(/ {2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])([^\s\n])/g, '$1 $2');
             text = text.replace(/([.!?]\s+)([а-яa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase()).trim();
             if (text.length > 0) text = text.charAt(0).toUpperCase() + text.slice(1);
-            output.value = text; updateStats();
+            output.value = text; finalText = text; updateStats();
         });
         
         document.getElementById('copyBtn').addEventListener('click', () => { if(!output.value) return; output.select(); document.execCommand('copy'); window.getSelection().removeAllRanges(); alert("Скопировано!"); });
