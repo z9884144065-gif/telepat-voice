@@ -3,17 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Pro Max</title>
+    <title>Telepat Voice - Ironclad</title>
     
-    <!-- Библиотеки для связи и QR -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
-    <!-- 🔥 ВОЗВРАЩАЕМ НЕЙРОСЕТЕВУЮ ОЗВУЧКУ (PIPER TTS) -->
-    <script type="module">
-        import { PiperTTS } from 'https://esm.sh/@mbreza/piper-tts-web@1.0.4';
-        window.PiperTTS = PiperTTS;
-    </script>
 
     <style>
         :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222; }
@@ -38,7 +31,6 @@
         .btn-purple { background: #9b59b6; }
         .btn-gray { background: #7f8c8d; }
         .btn-orange { background: #e67e22; }
-        .btn-red { background: #e74c3c; }
 
         .lang-select, .voice-select { padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: white; font-size: 14px; outline: none; font-weight: bold; cursor: pointer; }
         .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; background-color: #ff4d4d; transition: 0.3s; }
@@ -46,7 +38,6 @@
         .btn.listening { background-color: #e74c3c; animation: pulse 1.5s infinite; }
         .status { text-align: center; margin-top: 10px; font-size: 15px; color: #4caf50; font-weight: bold; }
 
-        /* Подсказки при наведении */
         .has-tooltip::after {
             content: attr(data-tooltip); position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%) translateY(10px);
             background: rgba(20, 20, 20, 0.95); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px;
@@ -80,7 +71,7 @@
 
 <div class="app-container" id="pc-interface">
     <div class="header">
-        <h1>🎙️ Telepat Voice (Pro Max)</h1>
+        <h1>🎙️ Telepat Voice (Ironclad)</h1>
         <button class="action-btn btn-green has-tooltip" id="connectPhoneBtn" style="flex: 0 0 150px;" data-tooltip="Показать QR-код для передачи текста с телефона">📱 Телефон</button>
     </div>
     
@@ -93,14 +84,12 @@
         <div class="stat-item"><span>Пробелов:</span><span class="stat-value" id="statSpaces">0</span></div>
     </div>
 
-    <!-- Панель инструментов -->
     <div class="actions-row">
         <button class="action-btn btn-blue has-tooltip" id="checkBtn" data-tooltip="🔍 Проверить текст на ошибки (LanguageTool)">🔍 Найти ошибки</button>
         <button class="action-btn btn-green has-tooltip" id="cleanBtn" data-tooltip="✨ Удалить лишние пробелы и заглавные буквы">✨ Очистить</button>
         <button class="action-btn btn-blue has-tooltip" id="translateBtn" data-tooltip="🌐 Перевести текст на другой язык">🌐 Перевести</button>
     </div>
 
-    <!-- Выбор языка и экспорт -->
     <div class="actions-row" style="background: #222; padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
         <span style="margin-right: 5px; font-size: 14px; font-weight: bold; color: #aaa;">Язык:</span>
         <select id="targetLang" class="lang-select" style="margin-right: 10px;">
@@ -117,16 +106,11 @@
         <button class="action-btn btn-orange has-tooltip" id="pdfBtn" data-tooltip="📄 Сохранить в PDF">📄 PDF</button>
     </div>
 
-    <!-- Озвучка и копирование -->
     <div class="actions-row" style="background: #1e1e1e; padding: 10px; border-radius: 10px; border: 1px solid #3498db;">
-        <!-- Возвращаем выбор нейросетевых голосов -->
-        <select id="voiceSelect" class="voice-select has-tooltip" data-tooltip="Выберите нейросетевой голос для озвучки" style="flex: 1;">
-            <option value="irina">👩 Ирина (Женский)</option>
-            <option value="denis">👨 Денис (Мужской)</option>
-            <option value="dmitri">👨 Дмитрий (Мужской)</option>
-            <option value="ruslan">👨 Руслан (Мужской)</option>
+        <select id="voiceSelect" class="voice-select has-tooltip" data-tooltip="Выберите системный голос" style="flex: 1;">
+            <option value="">Загрузка голосов Windows...</option>
         </select>
-        <button class="action-btn btn-green has-tooltip" id="speakBtn" data-tooltip="🔊 Озвучить текст нейросетевым голосом" style="flex: 1;">🔊 Озвучить</button>
+        <button class="action-btn btn-green has-tooltip" id="speakBtn" data-tooltip="🔊 Озвучить текст" style="flex: 1;">🔊 Озвучить</button>
         <button class="action-btn btn-purple has-tooltip" id="copyBtn" data-tooltip="📋 Скопировать текст" style="flex: 0 0 100px;">📋 Копировать</button>
         <button class="action-btn btn-gray has-tooltip" id="downloadBtn" data-tooltip="💾 Скачать .txt файл" style="flex: 0 0 100px;">💾 .txt</button>
     </div>
@@ -148,11 +132,8 @@
 </div>
 
 <script type="module">
-    // ==========================================
-    // 🔥 ВСТАВЬ СЮДА СВОЙ КЛЮЧ ОТ DEEPGRAM 🔥
-    // ==========================================
+    // 🔥 КЛЮЧ ОТ DEEPGRAM
     const DEEPGRAM_API_KEY = 'ВАШ_КЛЮЧ_ЗДЕСЬ'; 
-    // ==========================================
 
     const peerOptions = {
         host: '1.peerjs.com', port: 443, path: '/', secure: true,
@@ -163,10 +144,8 @@
     const connectId = urlParams.get('connect');
 
     if (connectId) {
-        // РЕЖИМ ТЕЛЕФОНА
         document.getElementById('pc-interface').style.display = 'none';
         document.getElementById('phone-interface').style.display = 'block';
-
         let phonePeer = new Peer(peerOptions);
         phonePeer.on('open', () => {
             const conn = phonePeer.connect(connectId);
@@ -174,42 +153,90 @@
                 document.getElementById('phone-status').textContent = "✅ Подключено к ПК!";
                 document.getElementById('phone-status').style.color = "#2ecc71";
                 const btn = document.getElementById('phone-send-btn');
-                btn.disabled = false;
-                btn.textContent = "Отправить на ПК";
+                btn.disabled = false; btn.textContent = "Отправить на ПК";
                 btn.onclick = () => {
                     const text = document.getElementById('phone-text').value;
                     if (text && conn.open) {
-                        conn.send(text);
-                        document.getElementById('phone-status').textContent = "🚀 Отправлено!";
+                        conn.send(text); document.getElementById('phone-status').textContent = "🚀 Отправлено!";
                         document.getElementById('phone-text').value = '';
                     }
                 };
             });
         });
     } else {
-        // РЕЖИМ КОМПЬЮТЕРА
         const output = document.getElementById('output');
         const toggleBtn = document.getElementById('toggleBtn');
         const status = document.getElementById('status');
         const qrModal = document.getElementById('qrModal');
-        
         const speakBtn = document.getElementById('speakBtn');
         const voiceSelect = document.getElementById('voiceSelect');
 
-        let mediaRecorder; 
-        let socket;
-        let isRecording = false;
-        let audioContext = null; 
-        let finalText = ""; 
-        let interimText = "";
+        // --- ЗАГРУЗКА СИСТЕМНЫХ ГОЛОСОВ ---
+        function loadVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            voiceSelect.innerHTML = '';
+            
+            // Ищем русские голоса
+            const ruVoices = voices.filter(v => v.lang.includes('ru'));
+            
+            if (ruVoices.length === 0) {
+                const option = document.createElement('option');
+                option.textContent = "Системный голос";
+                voiceSelect.appendChild(option);
+            } else {
+                ruVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.name;
+                    // Красиво оформляем
+                    let gender = voice.name.toLowerCase().includes('male') || voice.name.toLowerCase().includes('dmitry') ? '👨 ' : '👩 ';
+                    option.textContent = gender + voice.name;
+                    voiceSelect.appendChild(option);
+                });
+            }
+        }
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        setTimeout(loadVoices, 500);
 
-        // 1. ЗАПИСЬ ГОЛОСА (DEEPGRAM)
-        async function startRecording() {
-            if (DEEPGRAM_API_KEY === '21eed07deb14df55273746b0eb82d98606bd0e5b' || !DEEPGRAM_API_KEY) {
-                alert("Ошибка: Вы не вставили API-ключ Deepgram!");
-                return;
+        // --- ОЗВУЧКА ---
+        let isSpeaking = false;
+        speakBtn.addEventListener('click', () => {
+            const text = output.value;
+            if (!text || text.trim() === "") { alert("Введите текст для озвучки!"); return; }
+            
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false; speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = '';
+                status.textContent = 'Остановлено.'; status.style.color = "#4caf50"; return;
             }
 
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ru-RU';
+            utterance.rate = 1.0; // Скорость
+
+            // Выбираем голос
+            const selectedVoiceName = voiceSelect.value;
+            const voices = window.speechSynthesis.getVoices();
+            const selectedVoice = voices.find(v => v.name === selectedVoiceName);
+            if (selectedVoice) utterance.voice = selectedVoice;
+
+            utterance.onend = () => { 
+                isSpeaking = false; speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = '';
+                status.textContent = 'Готов к работе'; status.style.color = "#4caf50";
+            };
+
+            window.speechSynthesis.speak(utterance);
+            isSpeaking = true; speakBtn.textContent = '⏹ Стоп'; speakBtn.style.backgroundColor = '#e74c3c';
+            status.textContent = 'Воспроизведение...'; status.style.color = "#3498db";
+        });
+
+        // --- ЗАПИСЬ ГОЛОСА (DEEPGRAM) ---
+        let mediaRecorder; let socket; let isRecording = false; let audioContext = null; 
+        let finalText = ""; let interimText = "";
+
+        async function startRecording() {
+            if (DEEPGRAM_API_KEY === '21eed07deb14df55273746b0eb82d98606bd0e5b' || !DEEPGRAM_API_KEY) {
+                alert("Ошибка: Вы не вставили API-ключ Deepgram!"); return;
+            }
             try {
                 if (output.value.length < 5) finalText = ""; else finalText = output.value + " ";
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
@@ -219,25 +246,17 @@
                 const source = audioContext.createMediaStreamSource(stream);
                 const gainNode = audioContext.createGain();
                 gainNode.gain.value = 0; 
-                source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                source.connect(gainNode); gainNode.connect(audioContext.destination);
 
-                socket = new WebSocket('wss://api.deepgram.com/v1/listen?language=ru&model=nova-2&smart_format=true&interim_results=true', [
-                    'token', DEEPGRAM_API_KEY
-                ]);
+                socket = new WebSocket('wss://api.deepgram.com/v1/listen?language=ru&model=nova-2&smart_format=true&interim_results=true', ['token', DEEPGRAM_API_KEY]);
 
                 socket.onopen = () => {
-                    status.textContent = "🔴 Слушаю... (Мгновенный текст)";
-                    status.style.color = "#ff4d4d";
-                    toggleBtn.textContent = "⏹ Остановить";
-                    toggleBtn.classList.add('listening');
-                    isRecording = true;
-
+                    status.textContent = "🔴 Слушаю... (Мгновенный текст)"; status.style.color = "#ff4d4d";
+                    toggleBtn.textContent = "⏹ Остановить"; toggleBtn.classList.add('listening'); isRecording = true;
                     mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); 
                     mediaRecorder.ondataavailable = async (event) => {
                         if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-                            const arrayBuffer = await event.data.arrayBuffer();
-                            socket.send(arrayBuffer);
+                            const arrayBuffer = await event.data.arrayBuffer(); socket.send(arrayBuffer);
                         }
                     };
                     mediaRecorder.start(250); 
@@ -246,27 +265,15 @@
                 socket.onmessage = (message) => {
                     const received = JSON.parse(message.data);
                     const transcript = received.channel?.alternatives[0]?.transcript;
-                    
                     if (transcript) {
-                        if (received.is_final) {
-                            finalText += transcript + " ";
-                            interimText = "";
-                        } else {
-                            interimText = transcript;
-                        }
-                        output.value = finalText + interimText;
-                        output.scrollTop = output.scrollHeight;
-                        updateStats();
+                        if (received.is_final) { finalText += transcript + " "; interimText = ""; } 
+                        else { interimText = transcript; }
+                        output.value = finalText + interimText; output.scrollTop = output.scrollHeight; updateStats();
                     }
                 };
-
                 socket.onerror = () => stopRecording(stream);
                 socket.onclose = () => { if (isRecording) stopRecording(stream); };
-
-            } catch (err) { 
-                status.textContent = "❌ Ошибка микрофона: " + err.message; 
-                status.style.color = "#ff4d4d"; 
-            }
+            } catch (err) { status.textContent = "❌ Ошибка микрофона: " + err.message; status.style.color = "#ff4d4d"; }
         }
 
         function stopRecording(stream) {
@@ -274,87 +281,26 @@
             if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
             if (socket && socket.readyState === WebSocket.OPEN) socket.close();
             if (stream) stream.getTracks().forEach(track => track.stop()); 
-            
-            toggleBtn.textContent = "🎤 Начать запись"; 
-            toggleBtn.classList.remove('listening');
-            status.textContent = "Готов к работе";
-            status.style.color = "#4caf50";
-            output.value = finalText.trim(); 
-            updateStats();
+            toggleBtn.textContent = "🎤 Начать запись"; toggleBtn.classList.remove('listening');
+            status.textContent = "Готов к работе"; status.style.color = "#4caf50";
+            output.value = finalText.trim(); updateStats();
         }
 
         toggleBtn.addEventListener('click', () => {
             if (!isRecording) { startRecording(); } 
             else {
-                if (socket) socket.close();
-                toggleBtn.textContent = "⏳ Остановка...";
-                toggleBtn.disabled = true;
+                if (socket) socket.close(); toggleBtn.textContent = "⏳ Остановка..."; toggleBtn.disabled = true;
                 setTimeout(() => { toggleBtn.disabled = false; }, 1000);
             }
         });
 
-        // 2. НЕЙРОСЕТЕВАЯ ОЗВУЧКА (PIPER TTS)
-        let isSpeaking = false;
-        let currentAudio = null;
-
-        speakBtn.addEventListener('click', async () => {
-            const text = output.value;
-            if (!text || text.trim() === "") { alert("Введите текст для озвучки!"); return; }
-
-            if (isSpeaking) {
-                if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-                isSpeaking = false; speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = '';
-                status.textContent = 'Остановлено.'; status.style.color = "#4caf50"; return;
-            }
-
-            const selectedVoiceId = voiceSelect.value; 
-            speakBtn.textContent = '⏳ Загрузка...'; speakBtn.style.backgroundColor = '#ffa500';
-            status.textContent = `Загрузка нейросети (${selectedVoiceId})...`;
-            status.style.color = "#ffa500";
-
-            try {
-                if (!window.PiperTTS) throw new Error("Библиотека TTS не загрузилась. Проверьте интернет.");
-
-                // Используем прямые ссылки на модели
-                const baseHfUrl = `https://huggingface.co/rhasspy/piper-voices/resolve/main/ru/ru_RU/${selectedVoiceId}/medium/`;
-                const modelUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx`;
-                const configUrl = `${baseHfUrl}ru_RU-${selectedVoiceId}-medium.onnx.json`;
-
-                const voice = await window.PiperTTS.loadVoice({ modelUrl, configUrl });
-                status.textContent = 'Генерация звука... (пожалуйста, подождите)';
-                
-                const wavData = await voice.synthesize(text);
-                
-                const blob = new Blob([wavData], { type: 'audio/wav' });
-                const url = URL.createObjectURL(blob);
-                
-                currentAudio = new Audio(url);
-                currentAudio.onended = () => { 
-                    isSpeaking = false; speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = '';
-                    status.textContent = 'Готов к работе'; status.style.color = "#4caf50";
-                };
-                currentAudio.play();
-                
-                isSpeaking = true; speakBtn.textContent = '⏹ Стоп'; speakBtn.style.backgroundColor = '#e74c3c';
-                status.textContent = 'Воспроизведение...'; status.style.color = "#3498db";
-
-            } catch (error) {
-                console.error("ОШИБКА TTS:", error); 
-                alert("Ошибка озвучки:\n" + error.message);
-                status.textContent = 'Ошибка озвучки'; status.style.color = "#ff4d4d";
-                speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = ''; isSpeaking = false;
-            }
-        });
-
-        // 3. ПРОВЕРКА ОШИБОК (LANGUAGETOOL)
+        // --- ОСТАЛЬНЫЕ ФУНКЦИИ (Ошибки, Перевод, Excel и т.д.) ---
         document.getElementById('checkBtn').addEventListener('click', async () => {
-            const text = output.value;
-            if (!text.trim()) { alert("Введите текст!"); return; }
+            const text = output.value; if (!text.trim()) { alert("Введите текст!"); return; }
             status.textContent = "⏳ Поиск ошибок..."; status.style.color = "#ffa500";
             try {
                 const response = await fetch('http://localhost:3000/v2/check', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({ text: text, language: 'ru-RU' })
                 });
                 const data = await response.json();
@@ -369,25 +315,20 @@
             } catch (error) { status.textContent = "❌ Ошибка (запустите node proxy.js)"; status.style.color = "#ff4d4d"; }
         });
 
-        // 4. ПЕРЕВОДЧИК
         document.getElementById('translateBtn').addEventListener('click', async () => {
-            const text = output.value;
-            const targetLang = document.getElementById('targetLang').value;
+            const text = output.value; const targetLang = document.getElementById('targetLang').value;
             if (!text.trim()) { alert("Введите текст!"); return; }
-            const textToTranslate = text.substring(0, 500); 
-            status.textContent = "⏳ Перевод..."; status.style.color = "#ffa500";
+            const textToTranslate = text.substring(0, 500); status.textContent = "⏳ Перевод..."; status.style.color = "#ffa500";
             try {
                 const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToTranslate)}&langpair=ru|${targetLang}`);
                 const data = await response.json();
                 if (data.responseData && data.responseData.translatedText) {
                     output.value = `=== ПЕРЕВОД ===\n${data.responseData.translatedText}\n\n=== ОРИГИНАЛ ===\n${text}`;
-                    finalText = output.value;
-                    updateStats(); status.textContent = "✅ Переведено!"; status.style.color = "#4caf50";
+                    finalText = output.value; updateStats(); status.textContent = "✅ Переведено!"; status.style.color = "#4caf50";
                 } else { throw new Error("Ошибка"); }
             } catch (error) { status.textContent = "❌ Ошибка перевода"; status.style.color = "#ff4d4d"; }
         });
 
-        // 5. ЭКСПОРТ В EXCEL
         document.getElementById('excelBtn').addEventListener('click', () => {
             if (!output.value) return;
             const rows = output.value.split('\n').map(row => row.split(',').map(cell => `"${cell.trim().replace(/"/g, '""')}"`).join(';'));
@@ -396,7 +337,6 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
-        // 6. СУБТИТРЫ
         document.getElementById('srtBtn').addEventListener('click', () => {
             if (!output.value) return;
             const sentences = output.value.match(/[^.!?]+[.!?]+/g) || [output.value];
@@ -412,10 +352,8 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
-        // 7. PDF (ПЕЧАТЬ)
         document.getElementById('pdfBtn').addEventListener('click', () => { window.print(); });
 
-        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
         function updateStats() {
             const text = output.value;
             document.getElementById('statWords').textContent = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
@@ -440,24 +378,20 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
 
-        // QR
         let peer = null;
         document.getElementById('connectPhoneBtn').addEventListener('click', () => {
-            qrModal.style.display = 'flex';
-            document.getElementById('qrcode').innerHTML = '';
+            qrModal.style.display = 'flex'; document.getElementById('qrcode').innerHTML = '';
             const myPeerId = 'telepat-pc-' + Math.random().toString(36).substr(2, 6);
             const currentUrl = window.location.href.split('?')[0];
             const connectUrl = `${currentUrl}?connect=${myPeerId}`;
             new QRCode(document.getElementById('qrcode'), { text: connectUrl, width: 180, height: 180 });
-            document.getElementById('manualLink').href = connectUrl;
-            document.getElementById('manualLink').textContent = connectUrl;
+            document.getElementById('manualLink').href = connectUrl; document.getElementById('manualLink').textContent = connectUrl;
             if (peer) peer.destroy();
             peer = new Peer(myPeerId, peerOptions);
             peer.on('connection', (conn) => {
                 conn.on('data', (data) => {
                     if (typeof data === 'string') {
-                        output.value += (output.value ? "\n" : "") + data; 
-                        finalText = output.value; updateStats();
+                        output.value += (output.value ? "\n" : "") + data; finalText = output.value; updateStats();
                         qrModal.style.display = 'none'; alert("📥 Текст получен с телефона!");
                     }
                 });
