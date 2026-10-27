@@ -3,401 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telepat Voice - Clean</title>
+    <title>VoiceText Cat - Голосовой ввод</title>
     
-    <!-- Только библиотеки для связи (никаких тяжелых нейросетей для озвучки!) -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- TON Connect и PWA -->
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a1a">
+    <link rel="icon" type="image/png" href="icon.png">
 
     <style>
-        :root { --bg: #1a1a1a; --panel: #2b2b2b; --text: #fff; --border: #3d3d3d; --input-bg: #1e1e1e; --stat-bg: #222; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; }
+        :root { --bg: #121212; --panel: #1e1e1e; --text: #fff; --accent: #2ecc71; --btn-ton: #0098EA; --border: #333; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; box-sizing: border-box; }
         
-        .app-container { background: var(--panel); width: 100%; max-width: 950px; border-radius: 20px; padding: 20px; border: 1px solid var(--border); display: flex; flex-direction: column; box-sizing: border-box; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 15px; align-items: center; }
-        .header h1 { font-size: 20px; margin: 0; color: #ff4d4d; }
+        .container { max-width: 800px; width: 100%; text-align: center; margin-top: 20px; }
         
-        textarea { width: 100%; height: 300px; padding: 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 16px; resize: vertical; margin-bottom: 15px; outline: none; line-height: 1.6; box-sizing: border-box; }
+        /* Кошка */
+        .cat-icon { font-size: 90px; margin-bottom: 10px; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
         
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px; background: var(--stat-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border); }
-        .stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #ccc; }
-        .stat-value { font-weight: bold; color: #fff; background: var(--input-bg); padding: 4px 10px; border-radius: 6px; }
+        h1 { font-size: 38px; margin: 0 0 10px 0; color: var(--accent); letter-spacing: 1px; }
+        p.subtitle { font-size: 18px; color: #aaa; margin-bottom: 30px; line-height: 1.5; }
 
-        .actions-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; }
-        .action-btn { flex: 1; min-width: 110px; padding: 12px 5px; border-radius: 8px; border: none; color: white; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; position: relative; }
-        .action-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
-        
-        .btn-green { background: #2ecc71; }
-        .btn-blue { background: #3498db; }
-        .btn-purple { background: #9b59b6; }
-        .btn-gray { background: #7f8c8d; }
-        .btn-orange { background: #e67e22; }
+        /* Преимущества */
+        .features { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; text-align: left; }
+        .feature-item { background: var(--panel); padding: 15px; border-radius: 10px; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px; font-size: 15px; }
+        .feature-icon { font-size: 24px; }
 
-        .lang-select, .voice-select { padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: white; font-size: 14px; outline: none; font-weight: bold; cursor: pointer; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; background-color: #ff4d4d; transition: 0.3s; }
-        .btn:disabled { background-color: #555; cursor: not-allowed; }
-        .btn.listening { background-color: #e74c3c; animation: pulse 1.5s infinite; }
-        .status { text-align: center; margin-top: 10px; font-size: 15px; color: #4caf50; font-weight: bold; }
-
-        .has-tooltip::after {
-            content: attr(data-tooltip); position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%) translateY(10px);
-            background: rgba(20, 20, 20, 0.95); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px;
-            white-space: nowrap; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 9999;
-            border: 1px solid #555; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        /* Инфо-баннер о правилах */
+        .info-banner {
+            background: rgba(241, 196, 15, 0.1);
+            border: 1px solid #f1c40f;
+            color: #f1c40f;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            text-align: left;
         }
-        .has-tooltip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .info-banner b { color: #fff; }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
-        .modal { background: #2b2b2b; padding: 30px; border-radius: 20px; text-align: center; max-width: 400px; border: 1px solid #555; }
-        .modal h2 { color: #ff4d4d; margin-top: 0; font-size: 22px; }
-        #qrcode { display: flex; justify-content: center; margin: 20px 0; background: white; padding: 15px; border-radius: 10px; }
-        #phone-interface { display: none; background: var(--panel); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; text-align: center; border: 1px solid var(--border); }
-        #phone-interface h2 { color: #2ecc71; }
-        #phone-interface textarea { height: 200px; }
-        #phone-status { margin-top: 15px; color: #ffa500; font-weight: bold; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
+        /* Карточка оплаты */
+        .pricing-card { background: var(--panel); border: 2px solid var(--accent); border-radius: 20px; padding: 30px; max-width: 400px; margin: 0 auto; position: relative; box-shadow: 0 10px 30px rgba(46, 204, 113, 0.1); }
+        .price { font-size: 44px; font-weight: bold; margin: 10px 0; color: var(--text); }
+        .price span { font-size: 18px; color: #aaa; font-weight: normal; }
+        
+        /* Статус и таймер */
+        #statusBlock { padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; font-size: 15px; }
+        .status-trial { background: rgba(241, 196, 15, 0.15); color: #f1c40f; border: 1px solid #f1c40f; }
+        .status-pro { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid #2ecc71; }
+        
+        /* Кнопки */
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: 12px; color: white; display: block; box-sizing: border-box; text-decoration: none; }
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .btn-download { background: var(--accent); }
+        .btn-ton { background: var(--btn-ton); }
+        .btn-card { background: #7B68EE; }
+        .btn-disabled { background: #444; cursor: not-allowed; pointer-events: none; }
 
-        @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+        #ton-connect-btn-container { display: flex; justify-content: center; margin-top: 15px; }
+
+        @media (max-width: 600px) {
+            .features { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
-<div id="phone-interface">
-    <h2>📱 Отправка на ПК</h2>
-    <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">Вставьте текст ниже и нажмите кнопку.</p>
-    <textarea id="phone-text" placeholder="Введите текст здесь..."></textarea>
-    <button id="phone-send-btn" class="btn btn-green" style="background-color: #2ecc71;" disabled>⏳ Подключение...</button>
-    <div id="phone-status">Ожидание связи с ПК...</div>
-</div>
+<div class="container">
+    <div class="cat-icon">🐱</div>
+    <h1>VoiceText Cat</h1>
+    <p class="subtitle">Самое быстрое и точное расширение для голосового ввода.<br>Работает стабильно в любом браузере.</p>
 
-<div class="app-container" id="pc-interface">
-    <div class="header">
-        <h1>🎙️ Telepat Voice (Clean)</h1>
-        <button class="action-btn btn-green has-tooltip" id="connectPhoneBtn" style="flex: 0 0 150px;" data-tooltip="Показать QR-код для передачи текста с телефона">📱 Телефон</button>
-    </div>
-    
-    <textarea id="output" spellcheck="true" placeholder="Нажмите 'Начать запись' и просто говорите..."></textarea>
-    
-    <div class="stats-grid">
-        <div class="stat-item"><span>Слов:</span><span class="stat-value" id="statWords">0</span></div>
-        <div class="stat-item"><span>Символов:</span><span class="stat-value" id="statChars">0</span></div>
-        <div class="stat-item"><span>Без пробелов:</span><span class="stat-value" id="statCharsNoSpaces">0</span></div>
-        <div class="stat-item"><span>Пробелов:</span><span class="stat-value" id="statSpaces">0</span></div>
+    <div class="features">
+        <div class="feature-item"><span class="feature-icon">⚡</span> Мгновенный ввод текста</div>
+        <div class="feature-item"><span class="feature-icon">🎯</span> Точность 99%</div>
+        <div class="feature-item"><span class="feature-icon">🌍</span> Любые сайты и языки</div>
+        <div class="feature-item"><span class="feature-icon">🔒</span> Приватность данных</div>
     </div>
 
-    <div class="actions-row">
-        <button class="action-btn btn-blue has-tooltip" id="checkBtn" data-tooltip="🔍 Проверить текст на ошибки (LanguageTool)">🔍 Найти ошибки</button>
-        <button class="action-btn btn-green has-tooltip" id="cleanBtn" data-tooltip="✨ Удалить лишние пробелы и заглавные буквы">✨ Очистить</button>
-        <button class="action-btn btn-blue has-tooltip" id="translateBtn" data-tooltip="🌐 Перевести текст на другой язык">🌐 Перевести</button>
+    <!-- НОВЫЙ ИНФО-БАННЕР -->
+    <div class="info-banner">
+        🎁 <b>Вам доступен бесплатный пробный период на 3 дня.</b><br>
+        По истечении этого срока для продолжения работы потребуется оплатить подписку — <b>всего 1 TON (около 1$) за 30 дней</b>. Вы можете оплатить её прямо сейчас или дождаться окончания пробного периода.
     </div>
 
-    <div class="actions-row" style="background: #222; padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
-        <span style="margin-right: 5px; font-size: 14px; font-weight: bold; color: #aaa;">Язык:</span>
-        <select id="targetLang" class="lang-select" style="margin-right: 10px;">
-            <option value="en">🇬🇧 Английский</option>
-            <option value="zh">🇨🇳 Китайский</option>
-            <option value="ja">🇯🇵 Японский</option>
-            <option value="fr">🇫🇷 Французский</option>
-            <option value="de">🇩🇪 Немецкий</option>
-            <option value="es">🇪🇸 Испанский</option>
-        </select>
+    <div class="pricing-card">
+        <h2>Премиум доступ</h2>
+        <div class="price">1 TON <span>/ 30 дней</span></div>
         
-        <button class="action-btn btn-orange has-tooltip" id="excelBtn" data-tooltip="📊 Скачать для Excel">📊 В Excel</button>
-        <button class="action-btn btn-purple has-tooltip" id="srtBtn" data-tooltip="📺 Создать файл субтитров (.srt)">📺 Субтитры</button>
-        <button class="action-btn btn-orange has-tooltip" id="pdfBtn" data-tooltip="📄 Сохранить в PDF">📄 PDF</button>
-    </div>
-
-    <div class="actions-row" style="background: #1e1e1e; padding: 10px; border-radius: 10px; border: 1px solid #3498db;">
-        <select id="voiceSelect" class="voice-select has-tooltip" data-tooltip="Выберите голос" style="flex: 1;">
-            <option value="">Загрузка голосов...</option>
-        </select>
-        <button class="action-btn btn-green has-tooltip" id="speakBtn" data-tooltip="🔊 Озвучить текст" style="flex: 1;">🔊 Озвучить</button>
-        <button class="action-btn btn-purple has-tooltip" id="copyBtn" data-tooltip="📋 Скопировать текст" style="flex: 0 0 100px;">📋 Копировать</button>
-        <button class="action-btn btn-gray has-tooltip" id="downloadBtn" data-tooltip="💾 Скачать .txt файл" style="flex: 0 0 100px;">💾 .txt</button>
-    </div>
-    
-    <button id="toggleBtn" class="btn has-tooltip" data-tooltip="Включить микрофон. Говорите, текст появится на лету.">🎤 Начать запись</button>
-    <div class="status" id="status">Готов к работе</div>
-</div>
-
-<div class="modal-overlay" id="qrModal">
-    <div class="modal">
-        <h2>📱 Подключение телефона</h2>
-        <p>Наведите камеру телефона на QR-код <b>ИЛИ</b> скопируйте ссылку ниже.</p>
-        <div id="qrcode"></div>
-        <div id="manual-link-box" style="background: #111; padding: 10px; border-radius: 8px; font-size: 12px; word-break: break-all; margin-bottom: 15px;">
-            <a id="manualLink" href="#" target="_blank" style="color: #2ecc71; text-decoration: none;"></a>
+        <!-- Блок статуса (Триал или Оплачено) -->
+        <div id="statusBlock" class="status-trial">
+            ⏳ Пробный период: <span id="trialTimer">Загрузка...</span>
         </div>
-        <button class="action-btn btn-gray" id="closeQrBtn" style="width: 100%;">Закрыть</button>
+
+        <!-- Кнопка скачивания Триала -->
+        <a href="https://telepat-voice.z9884144065.workers.dev/voice-text-cat.zip" download class="btn btn-download" id="downloadTrialBtn">
+            📥 Скачать Кошку
+        </a>
+
+        <!-- Блок оплаты -->
+        <div id="paymentBlock" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
+            <p style="font-size: 13px; color: #aaa; margin-bottom: 10px;">Оплатить подписку (1 TON / 30 дней):</p>
+            <button class="btn btn-ton" onclick="payWithTon()">💎 Оплатить 1 TON</button>
+            <button class="btn btn-card" onclick="alert('Оплата картой скоро появится! Пока используйте TON.')">💳 Оплатить картой (100₽)</button>
+            <div id="ton-connect-btn-container"></div>
+        </div>
+        
+        <p style="font-size: 12px; color: #888; margin-top: 15px;">Инструкция по установке: Распакуйте ZIP, зайдите в chrome://extensions/, включите «Режим разработчика» и загрузите папку.</p>
     </div>
 </div>
 
 <script type="module">
-    // 🔥 КЛЮЧ ОТ DEEPGRAM
-    const DEEPGRAM_API_KEY = '21eed07deb14df55273746b0eb82d98606bd0e5b'; 
+    import { toNano } from 'https://esm.sh/@ton/core@0.56.0';
 
-    const peerOptions = {
-        host: '1.peerjs.com', port: 443, path: '/', secure: true,
-        config: { 'iceServers': [{ url: 'stun:stun.cloudflare.com:3478' }, { url: 'turn:turn.cloudflare.com:3478', username: 'cloudflare', credential: 'cloudflare' }, { url: 'turn:turn.cloudflare.com:3478?transport=tcp', username: 'cloudflare', credential: 'cloudflare' }] }
-    };
+    // =====================================================
+    // НАСТРОЙКИ ОПЛАТЫ
+    // =====================================================
+    const MANIFEST_URL = 'https://telepat-voice.z9884144065.workers.dev/tonconnect-manifest.json';
+    const RECIPIENT_WALLET = 'UQDrYlhd-JAxx0ZH7fgC0rcKz3mW6ZTGOjPpGeeiT6IulMFc'; 
+    
+    const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+        manifestUrl: MANIFEST_URL, buttonRootId: 'ton-connect-btn-container'
+    });
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const connectId = urlParams.get('connect');
+    // =====================================================
+    // ЛОГИКА ТРИАЛА (3 ДНЯ НА САЙТЕ)
+    // =====================================================
+    const TRIAL_DAYS = 3;
+    const TRIAL_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
+    const LS_FIRST_VISIT = 'cat_first_visit';
+    const LS_PRO = 'cat_premium_until';
+    
+    let timerInterval;
 
-    if (connectId) {
-        document.getElementById('pc-interface').style.display = 'none';
-        document.getElementById('phone-interface').style.display = 'block';
-        let phonePeer = new Peer(peerOptions);
-        phonePeer.on('open', () => {
-            const conn = phonePeer.connect(connectId);
-            conn.on('open', () => {
-                document.getElementById('phone-status').textContent = "✅ Подключено к ПК!";
-                document.getElementById('phone-status').style.color = "#2ecc71";
-                const btn = document.getElementById('phone-send-btn');
-                btn.disabled = false; btn.textContent = "Отправить на ПК";
-                btn.onclick = () => {
-                    const text = document.getElementById('phone-text').value;
-                    if (text && conn.open) {
-                        conn.send(text); document.getElementById('phone-status').textContent = "🚀 Отправлено!";
-                        document.getElementById('phone-text').value = '';
-                    }
-                };
-            });
-        });
-    } else {
-        const output = document.getElementById('output');
-        const toggleBtn = document.getElementById('toggleBtn');
-        const status = document.getElementById('status');
-        const qrModal = document.getElementById('qrModal');
-        const speakBtn = document.getElementById('speakBtn');
-        const voiceSelect = document.getElementById('voiceSelect');
-
-        // --- ЗАГРУЗКА СИСТЕМНЫХ ГОЛОСОВ ---
-        function loadVoices() {
-            const voices = window.speechSynthesis.getVoices();
-            voiceSelect.innerHTML = '';
-            const ruVoices = voices.filter(v => v.lang.includes('ru'));
-            
-            if (ruVoices.length === 0) {
-                const option = document.createElement('option');
-                option.textContent = "Системный голос (по умолчанию)";
-                voiceSelect.appendChild(option);
-            } else {
-                ruVoices.forEach(voice => {
-                    const option = document.createElement('option');
-                    option.value = voice.name;
-                    let gender = voice.name.toLowerCase().includes('male') || voice.name.toLowerCase().includes('dmitry') ? '👨 ' : '👩 ';
-                    option.textContent = gender + voice.name;
-                    voiceSelect.appendChild(option);
-                });
-            }
-        }
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        setTimeout(loadVoices, 500);
-
-        // --- ОЗВУЧКА ---
-        let isSpeaking = false;
-        speakBtn.addEventListener('click', () => {
-            const text = output.value;
-            if (!text || text.trim() === "") { alert("Введите текст для озвучки!"); return; }
-            
-            if (isSpeaking) {
-                window.speechSynthesis.cancel();
-                isSpeaking = false; speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = '';
-                status.textContent = 'Остановлено.'; status.style.color = "#4caf50"; return;
-            }
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'ru-RU';
-            utterance.rate = 1.0;
-
-            const selectedVoiceName = voiceSelect.value;
-            const voices = window.speechSynthesis.getVoices();
-            const selectedVoice = voices.find(v => v.name === selectedVoiceName);
-            if (selectedVoice) utterance.voice = selectedVoice;
-
-            utterance.onend = () => { 
-                isSpeaking = false; speakBtn.textContent = '🔊 Озвучить'; speakBtn.style.backgroundColor = '';
-                status.textContent = 'Готов к работе'; status.style.color = "#4caf50";
-            };
-
-            window.speechSynthesis.speak(utterance);
-            isSpeaking = true; speakBtn.textContent = '⏹ Стоп'; speakBtn.style.backgroundColor = '#e74c3c';
-            status.textContent = 'Воспроизведение...'; status.style.color = "#3498db";
-        });
-
-        // --- ЗАПИСЬ ГОЛОСА (DEEPGRAM) ---
-        let mediaRecorder; let socket; let isRecording = false; let audioContext = null; 
-        let finalText = ""; let interimText = "";
-
-        async function startRecording() {
-            if (DEEPGRAM_API_KEY === 'ВАШ_КЛЮЧ_ЗДЕСЬ' || !DEEPGRAM_API_KEY) {
-                alert("Ошибка: Вы не вставили API-ключ Deepgram!"); return;
-            }
-            try {
-                if (output.value.length < 5) finalText = ""; else finalText = output.value + " ";
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
-                
-                if (!audioContext) audioContext = new AudioContext();
-                if (audioContext.state === 'suspended') await audioContext.resume();
-                const source = audioContext.createMediaStreamSource(stream);
-                const gainNode = audioContext.createGain();
-                gainNode.gain.value = 0; 
-                source.connect(gainNode); gainNode.connect(audioContext.destination);
-
-                socket = new WebSocket('wss://api.deepgram.com/v1/listen?language=ru&model=nova-2&smart_format=true&interim_results=true', ['token', DEEPGRAM_API_KEY]);
-
-                socket.onopen = () => {
-                    status.textContent = "🔴 Слушаю... (Мгновенный текст)"; status.style.color = "#ff4d4d";
-                    toggleBtn.textContent = "⏹ Остановить"; toggleBtn.classList.add('listening'); isRecording = true;
-                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); 
-                    mediaRecorder.ondataavailable = async (event) => {
-                        if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-                            const arrayBuffer = await event.data.arrayBuffer(); socket.send(arrayBuffer);
-                        }
-                    };
-                    mediaRecorder.start(250); 
-                };
-
-                socket.onmessage = (message) => {
-                    const received = JSON.parse(message.data);
-                    const transcript = received.channel?.alternatives[0]?.transcript;
-                    if (transcript) {
-                        if (received.is_final) { finalText += transcript + " "; interimText = ""; } 
-                        else { interimText = transcript; }
-                        output.value = finalText + interimText; output.scrollTop = output.scrollHeight; updateStats();
-                    }
-                };
-                socket.onerror = () => stopRecording(stream);
-                socket.onclose = () => { if (isRecording) stopRecording(stream); };
-            } catch (err) { status.textContent = "❌ Ошибка микрофона: " + err.message; status.style.color = "#ff4d4d"; }
-        }
-
-        function stopRecording(stream) {
-            isRecording = false;
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-            if (socket && socket.readyState === WebSocket.OPEN) socket.close();
-            if (stream) stream.getTracks().forEach(track => track.stop()); 
-            toggleBtn.textContent = "🎤 Начать запись"; toggleBtn.classList.remove('listening');
-            status.textContent = "Готов к работе"; status.style.color = "#4caf50";
-            output.value = finalText.trim(); updateStats();
-        }
-
-        toggleBtn.addEventListener('click', () => {
-            if (!isRecording) { startRecording(); } 
-            else {
-                if (socket) socket.close(); toggleBtn.textContent = "⏳ Остановка..."; toggleBtn.disabled = true;
-                setTimeout(() => { toggleBtn.disabled = false; }, 1000);
-            }
-        });
-
-        // --- ОСТАЛЬНЫЕ ФУНКЦИИ (Ошибки, Перевод, Excel и т.д.) ---
-        document.getElementById('checkBtn').addEventListener('click', async () => {
-            const text = output.value; if (!text.trim()) { alert("Введите текст!"); return; }
-            status.textContent = "⏳ Поиск ошибок..."; status.style.color = "#ffa500";
-            try {
-                const response = await fetch('http://localhost:3000/v2/check', {
-                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ text: text, language: 'ru-RU' })
-                });
-                const data = await response.json();
-                if (data.matches && data.matches.length > 0) {
-                    let errorMessages = data.matches.map(m => {
-                        let rep = m.replacements && m.replacements.length > 0 ? m.replacements[0].value : 'нет';
-                        return `❌ "${m.context.text}"\n💡 ${m.message}\n👉 Заменить: ${rep}\n`;
-                    }).join('\n---\n');
-                    alert(`Найдено ошибок: ${data.matches.length}\n\n` + errorMessages);
-                    status.textContent = `Ошибок: ${data.matches.length}`; status.style.color = "#e67e22";
-                } else { alert("🎉 Ошибок не найдено!"); status.textContent = "✅ Ошибок нет!"; status.style.color = "#4caf50"; }
-            } catch (error) { status.textContent = "❌ Ошибка (запустите node proxy.js)"; status.style.color = "#ff4d4d"; }
-        });
-
-        document.getElementById('translateBtn').addEventListener('click', async () => {
-            const text = output.value; const targetLang = document.getElementById('targetLang').value;
-            if (!text.trim()) { alert("Введите текст!"); return; }
-            const textToTranslate = text.substring(0, 500); status.textContent = "⏳ Перевод..."; status.style.color = "#ffa500";
-            try {
-                const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToTranslate)}&langpair=ru|${targetLang}`);
-                const data = await response.json();
-                if (data.responseData && data.responseData.translatedText) {
-                    output.value = `=== ПЕРЕВОД ===\n${data.responseData.translatedText}\n\n=== ОРИГИНАЛ ===\n${text}`;
-                    finalText = output.value; updateStats(); status.textContent = "✅ Переведено!"; status.style.color = "#4caf50";
-                } else { throw new Error("Ошибка"); }
-            } catch (error) { status.textContent = "❌ Ошибка перевода"; status.style.color = "#ff4d4d"; }
-        });
-
-        document.getElementById('excelBtn').addEventListener('click', () => {
-            if (!output.value) return;
-            const rows = output.value.split('\n').map(row => row.split(',').map(cell => `"${cell.trim().replace(/"/g, '""')}"`).join(';'));
-            const blob = new Blob(["\ufeff" + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Telepat_Excel_${Date.now()}.csv`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        });
-
-        document.getElementById('srtBtn').addEventListener('click', () => {
-            if (!output.value) return;
-            const sentences = output.value.match(/[^.!?]+[.!?]+/g) || [output.value];
-            let srt = ""; let startTime = 0;
-            sentences.forEach((sentence, i) => {
-                const start = new Date(startTime * 1000).toISOString().substr(11, 12).replace('.', ',');
-                startTime += 5;
-                const end = new Date(startTime * 1000).toISOString().substr(11, 12).replace('.', ',');
-                srt += `${i + 1}\n${start} --> ${end}\n${sentence.trim()}\n\n`;
-            });
-            const blob = new Blob([srt], { type: 'text/srt;charset=utf-8;' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Telepat_Subs_${Date.now()}.srt`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        });
-
-        document.getElementById('pdfBtn').addEventListener('click', () => { window.print(); });
-
-        function updateStats() {
-            const text = output.value;
-            document.getElementById('statWords').textContent = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
-            document.getElementById('statChars').textContent = text.length;
-            document.getElementById('statCharsNoSpaces').textContent = text.replace(/\s/g, '').length;
-            document.getElementById('statSpaces').textContent = (text.match(/ /g) || []).length;
-        }
-        output.addEventListener('input', updateStats);
-
-        document.getElementById('cleanBtn').addEventListener('click', () => {
-            let text = output.value.replace(/ {2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])([^\s\n])/g, '$1 $2');
-            text = text.replace(/([.!?]\s+)([а-яa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase()).trim();
-            if (text.length > 0) text = text.charAt(0).toUpperCase() + text.slice(1);
-            output.value = text; finalText = text; updateStats();
-        });
+    function updateTimer() {
+        const firstVisit = parseInt(localStorage.getItem(LS_FIRST_VISIT) || '0', 10);
+        const proUntil = parseInt(localStorage.getItem(LS_PRO) || '0', 10);
+        const now = Date.now();
         
-        document.getElementById('copyBtn').addEventListener('click', () => { if(!output.value) return; output.select(); document.execCommand('copy'); window.getSelection().removeAllRanges(); alert("Скопировано!"); });
-        document.getElementById('downloadBtn').addEventListener('click', () => {
-            if (!output.value) return;
-            const blob = new Blob([output.value], { type: 'text/plain;charset=utf-8' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Telepat_${Date.now()}.txt`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        });
+        const statusBlock = document.getElementById('statusBlock');
+        const timerEl = document.getElementById('trialTimer');
+        const downloadBtn = document.getElementById('downloadTrialBtn');
 
-        let peer = null;
-        document.getElementById('connectPhoneBtn').addEventListener('click', () => {
-            qrModal.style.display = 'flex'; document.getElementById('qrcode').innerHTML = '';
-            const myPeerId = 'telepat-pc-' + Math.random().toString(36).substr(2, 6);
-            const currentUrl = window.location.href.split('?')[0];
-            const connectUrl = `${currentUrl}?connect=${myPeerId}`;
-            new QRCode(document.getElementById('qrcode'), { text: connectUrl, width: 180, height: 180 });
-            document.getElementById('manualLink').href = connectUrl; document.getElementById('manualLink').textContent = connectUrl;
-            if (peer) peer.destroy();
-            peer = new Peer(myPeerId, peerOptions);
-            peer.on('connection', (conn) => {
-                conn.on('data', (data) => {
-                    if (typeof data === 'string') {
-                        output.value += (output.value ? "\n" : "") + data; finalText = output.value; updateStats();
-                        qrModal.style.display = 'none'; alert("📥 Текст получен с телефона!");
-                    }
-                });
-            });
-        });
-        document.getElementById('closeQrBtn').addEventListener('click', () => { qrModal.style.display = 'none'; if (peer) { peer.destroy(); peer = null; } });
+        // Если человек оплатил
+        if (proUntil && proUntil > now) {
+            const daysLeft = Math.ceil((proUntil - now) / (1000 * 60 * 60 * 24));
+            statusBlock.className = 'status-pro';
+            statusBlock.innerHTML = `✅ Подписка активна. Осталось дней: ${daysLeft}`;
+            downloadBtn.classList.remove('btn-disabled');
+            downloadBtn.innerHTML = '📥 Скачать PRO версию';
+            return;
+        }
 
-        updateStats();
+        // Если это первый заход
+        if (!firstVisit) {
+            localStorage.setItem(LS_FIRST_VISIT, String(now));
+            return updateTimer(); // Перезапускаем
+        }
+
+        // Считаем триал
+        const trialEnd = firstVisit + TRIAL_MS;
+        if (now < trialEnd) {
+            const remaining = trialEnd - now;
+            const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+            
+            statusBlock.className = 'status-trial';
+            statusBlock.innerHTML = `⏳ Пробный период: ${days}д ${hours}ч ${minutes}м ${seconds}с`;
+            downloadBtn.classList.remove('btn-disabled');
+            downloadBtn.innerHTML = '📥 Скачать Кошку';
+        } else {
+            // Триал кончился
+            statusBlock.className = 'status-trial';
+            statusBlock.style.background = 'rgba(255, 77, 77, 0.15)';
+            statusBlock.style.borderColor = '#ff4d4d';
+            statusBlock.style.color = '#ff4d4d';
+            statusBlock.innerHTML = `🔒 Пробный период закончился. Оплатите подписку.`;
+            downloadBtn.classList.add('btn-disabled');
+            downloadBtn.innerHTML = '🔒 Скачивание заблокировано';
+        }
     }
+
+    if (!timerInterval) {
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    // =====================================================
+    // ОПЛАТА
+    // =====================================================
+    window.payWithTon = async function() {
+        if (!tonConnectUI.wallet) { alert("Сначала подключите TON-кошелек (кнопка внизу)!"); return; }
+        try {
+            const transaction = { 
+                validUntil: Math.floor(Date.now() / 1000) + 600, 
+                network: '-239', 
+                messages: [{ address: RECIPIENT_WALLET, amount: toNano('1').toString() }] 
+            };
+            await tonConnectUI.sendTransaction(transaction); 
+            
+            alert("✅ Транзакция отправлена! Ожидайте подтверждения сети (10-20 сек)...");
+            
+            // Имитация ожидания ответа от сети (в реальности здесь нужно слушать вебхук)
+            setTimeout(() => {
+                const now = Date.now();
+                // Даем 30 дней подписки
+                localStorage.setItem(LS_PRO, String(now + (30 * 24 * 60 * 60 * 1000)));
+                alert("🎉 Оплата получена! Подписка активирована на 30 дней.");
+                updateTimer();
+            }, 15000); 
+
+        } catch (e) { 
+            console.error(e); 
+            alert("Ошибка при отправке TON. Убедитесь, что у вас есть средства."); 
+        }
+    };
 </script>
 </body>
 </html>
