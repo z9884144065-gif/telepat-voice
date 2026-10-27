@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VoiceText Cat - Голосовой ввод</title>
+    <title>VoiceText Cat - Голосовой ввод в браузере</title>
     
     <!-- TON Connect и PWA -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
@@ -29,18 +29,8 @@
         .feature-item { background: var(--panel); padding: 15px; border-radius: 10px; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px; font-size: 15px; }
         .feature-icon { font-size: 24px; }
 
-        /* Инфо-баннер о правилах */
-        .info-banner {
-            background: rgba(241, 196, 15, 0.1);
-            border: 1px solid #f1c40f;
-            color: #f1c40f;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 14px;
-            line-height: 1.5;
-            margin-bottom: 25px;
-            text-align: left;
-        }
+        /* Инфо-баннер */
+        .info-banner { background: rgba(241, 196, 15, 0.1); border: 1px solid #f1c40f; color: #f1c40f; padding: 15px; border-radius: 10px; font-size: 14px; line-height: 1.5; margin-bottom: 25px; text-align: left; }
         .info-banner b { color: #fff; }
 
         /* Карточка оплаты */
@@ -54,7 +44,7 @@
         .status-pro { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid #2ecc71; }
         
         /* Кнопки */
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: 12px; color: white; display: block; box-sizing: border-box; text-decoration: none; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: 12px; color: white; display: block; box-sizing: border-box; text-decoration: none; text-align: center; }
         .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
         .btn-download { background: var(--accent); }
         .btn-ton { background: var(--btn-ton); }
@@ -62,10 +52,7 @@
         .btn-disabled { background: #444; cursor: not-allowed; pointer-events: none; }
 
         #ton-connect-btn-container { display: flex; justify-content: center; margin-top: 15px; }
-
-        @media (max-width: 600px) {
-            .features { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 600px) { .features { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -82,10 +69,9 @@
         <div class="feature-item"><span class="feature-icon">🔒</span> Приватность данных</div>
     </div>
 
-    <!-- НОВЫЙ ИНФО-БАННЕР -->
     <div class="info-banner">
         🎁 <b>Вам доступен бесплатный пробный период на 3 дня.</b><br>
-        По истечении этого срока для продолжения работы потребуется оплатить подписку — <b>всего 1 TON (около 1$) за 30 дней</b>. Вы можете оплатить её прямо сейчас или дождаться окончания пробного периода.
+        По истечении этого срока для продолжения работы потребуется оплатить подписку — <b>всего 1 TON (около 1$) за 30 дней</b>.
     </div>
 
     <div class="pricing-card">
@@ -97,8 +83,8 @@
             ⏳ Пробный период: <span id="trialTimer">Загрузка...</span>
         </div>
 
-        <!-- Кнопка скачивания Триала -->
-        <a href="https://telepat-voice.z9884144065.workers.dev/voice-text-cat.zip" download class="btn btn-download" id="downloadTrialBtn">
+        <!-- Кнопка скачивания Кошки -->
+        <a href="voice-text-cat.zip" download class="btn btn-download" id="downloadTrialBtn">
             📥 Скачать Кошку
         </a>
 
@@ -110,7 +96,7 @@
             <div id="ton-connect-btn-container"></div>
         </div>
         
-        <p style="font-size: 12px; color: #888; margin-top: 15px;">Инструкция по установке: Распакуйте ZIP, зайдите в chrome://extensions/, включите «Режим разработчика» и загрузите папку.</p>
+        <p style="font-size: 12px; color: #888; margin-top: 15px;">Инструкция по установке: Распакуйте ZIP-архив, зайдите в chrome://extensions/, включите «Режим разработчика» и нажмите «Загрузить распакованное расширение».</p>
     </div>
 </div>
 
@@ -118,9 +104,9 @@
     import { toNano } from 'https://esm.sh/@ton/core@0.56.0';
 
     // =====================================================
-    // НАСТРОЙКИ ОПЛАТЫ
+    // НАСТРОЙКИ ОПЛАТЫ (ССЫЛКА НА GITHUB PAGES)
     // =====================================================
-    const MANIFEST_URL = 'https://telepat-voice.z9884144065.workers.dev/tonconnect-manifest.json';
+    const MANIFEST_URL = 'https://z9884144065-gif.github.io/telepat-voice/tonconnect-manifest.json';
     const RECIPIENT_WALLET = 'UQDrYlhd-JAxx0ZH7fgC0rcKz3mW6ZTGOjPpGeeiT6IulMFc'; 
     
     const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
@@ -143,7 +129,6 @@
         const now = Date.now();
         
         const statusBlock = document.getElementById('statusBlock');
-        const timerEl = document.getElementById('trialTimer');
         const downloadBtn = document.getElementById('downloadTrialBtn');
 
         // Если человек оплатил
@@ -159,7 +144,7 @@
         // Если это первый заход
         if (!firstVisit) {
             localStorage.setItem(LS_FIRST_VISIT, String(now));
-            return updateTimer(); // Перезапускаем
+            return updateTimer();
         }
 
         // Считаем триал
@@ -193,7 +178,7 @@
     }
 
     // =====================================================
-    // ОПЛАТА
+    // ОПЛАТА TON
     // =====================================================
     window.payWithTon = async function() {
         if (!tonConnectUI.wallet) { alert("Сначала подключите TON-кошелек (кнопка внизу)!"); return; }
