@@ -39,9 +39,11 @@
         .price span { font-size: 18px; color: #aaa; font-weight: normal; }
         
         /* Статус и таймер */
-        #statusBlock { padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; font-size: 15px; }
+        #statusBlock { padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; font-size: 15px; transition: 0.3s; }
         .status-trial { background: rgba(241, 196, 15, 0.15); color: #f1c40f; border: 1px solid #f1c40f; }
         .status-pro { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid #2ecc71; }
+        .status-session { background: rgba(243, 156, 18, 0.15); color: #f39c12; border: 1px solid #f39c12; }
+        .status-locked { background: rgba(255, 77, 77, 0.15); color: #ff4d4d; border: 1px solid #ff4d4d; }
         
         /* Кнопки */
         .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: 12px; color: white; display: block; box-sizing: border-box; text-decoration: none; text-align: center; }
@@ -49,6 +51,7 @@
         .btn-download { background: var(--accent); }
         .btn-ton { background: var(--btn-ton); }
         .btn-card { background: #7B68EE; }
+        .btn-session { background: #f39c12; }
         .btn-disabled { background: #444; cursor: not-allowed; pointer-events: none; }
 
         #ton-connect-btn-container { display: flex; justify-content: center; margin-top: 15px; }
@@ -71,22 +74,33 @@
 
     <div class="info-banner">
         🎁 <b>Вам доступен бесплатный пробный период на 3 дня.</b><br>
-        По истечении этого срока для продолжения работы потребуется оплатить подписку — <b>всего 1 TON (около 1$) за 30 дней</b>.
+        По истечении этого срока для продолжения работы потребуется оплатить подписку — <b>всего 1 TON (около 1$) за 30 дней</b>.<br>
+        <span style="color: #2ecc71;">🔑 Также можно получать тестовые сессии по 30 минут бесконечно (для тестирования).</span>
     </div>
 
     <div class="pricing-card">
         <h2>Премиум доступ</h2>
         <div class="price">1 TON <span>/ 30 дней</span></div>
         
-        <!-- Блок статуса (Триал или Оплачено) -->
+        <!-- Блок статуса (Триал / Сессия / PRO / Locked) -->
         <div id="statusBlock" class="status-trial">
             ⏳ Пробный период: <span id="trialTimer">Загрузка...</span>
         </div>
 
-        <!-- Кнопка скачивания Кошки -->
+        <!-- Кнопка скачивания -->
         <a href="voice-text-cat.zip" download class="btn btn-download" id="downloadTrialBtn">
             📥 Скачать Кошку
         </a>
+
+        <!-- Блок 30-минутной сессии (появляется после окончания триала) -->
+        <div id="sessionBlock" style="display:none; margin-top: 5px;">
+            <button class="btn btn-session" onclick="activateSession()">
+                🎁 Получить 30 минут теста
+            </button>
+            <p style="font-size: 12px; color: #888; margin: 0 0 10px 0;">
+                Нажмите кнопку — получите 30 минут доступа. Можно повторять бесконечно.
+            </p>
+        </div>
 
         <!-- Блок оплаты -->
         <div id="paymentBlock" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
@@ -104,7 +118,7 @@
     import { toNano } from 'https://esm.sh/@ton/core@0.56.0';
 
     // =====================================================
-    // НАСТРОЙКИ ОПЛАТЫ (ССЫЛКА НА GITHUB PAGES)
+    // НАСТРОЙКИ ОПЛАТЫ
     // =====================================================
     const MANIFEST_URL = 'https://z9884144065-gif.github.io/telepat-voice/tonconnect-manifest.json';
     const RECIPIENT_WALLET = 'UQDrYlhd-JAxx0ZH7fgC0rcKz3mW6ZTGOjPpGeeiT6IulMFc'; 
@@ -114,45 +128,52 @@
     });
 
     // =====================================================
-    // ЛОГИКА ТРИАЛА (3 ДНЯ НА САЙТЕ)
+    // ЛОГИКА ТРИАЛА + 30-МИНУТНЫЕ СЕССИИ
     // =====================================================
     const TRIAL_DAYS = 3;
     const TRIAL_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
+    const SESSION_MS = 30 * 60 * 1000;            // 30 минут
+    const COOLDOWN_MS = 3 * 1000;                 // 3 сек защита от двойного клика
     const LS_FIRST_VISIT = 'cat_first_visit';
     const LS_PRO = 'cat_premium_until';
+    const LS_SESSION_END = 'cat_session_end';     // время окончания 30-мин сессии
+    const LS_LAST_ACTIVATE = 'cat_last_activate'; // защита от спама
     
     let timerInterval;
 
     function updateTimer() {
-        const firstVisit = parseInt(localStorage.getItem(LS_FIRST_VISIT) || '0', 10);
-        const proUntil = parseInt(localStorage.getItem(LS_PRO) || '0', 10);
+        const firstVisit  = parseInt(localStorage.getItem(LS_FIRST_VISIT) || '0', 10);
+        const proUntil    = parseInt(localStorage.getItem(LS_PRO) || '0', 10);
+        const sessionEnd  = parseInt(localStorage.getItem(LS_SESSION_END) || '0', 10);
         const now = Date.now();
         
         const statusBlock = document.getElementById('statusBlock');
         const downloadBtn = document.getElementById('downloadTrialBtn');
+        const sessionBlock = document.getElementById('sessionBlock');
 
-        // Если человек оплатил
+        // ---- 1. ОПЛАЧЕНО (PRO) ----
         if (proUntil && proUntil > now) {
             const daysLeft = Math.ceil((proUntil - now) / (1000 * 60 * 60 * 24));
             statusBlock.className = 'status-pro';
             statusBlock.innerHTML = `✅ Подписка активна. Осталось дней: ${daysLeft}`;
             downloadBtn.classList.remove('btn-disabled');
             downloadBtn.innerHTML = '📥 Скачать PRO версию';
+            sessionBlock.style.display = 'none';
             return;
         }
 
-        // Если это первый заход
+        // ---- 2. ПЕРВЫЙ ЗАХОД ----
         if (!firstVisit) {
             localStorage.setItem(LS_FIRST_VISIT, String(now));
             return updateTimer();
         }
 
-        // Считаем триал
+        // ---- 3. ИДЁТ 3-ДНЕВНЫЙ ТРИАЛ ----
         const trialEnd = firstVisit + TRIAL_MS;
         if (now < trialEnd) {
             const remaining = trialEnd - now;
-            const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const days    = Math.floor(remaining / (1000 * 60 * 60 * 24));
+            const hours   = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
             
@@ -160,17 +181,46 @@
             statusBlock.innerHTML = `⏳ Пробный период: ${days}д ${hours}ч ${minutes}м ${seconds}с`;
             downloadBtn.classList.remove('btn-disabled');
             downloadBtn.innerHTML = '📥 Скачать Кошку';
-        } else {
-            // Триал кончился
-            statusBlock.className = 'status-trial';
-            statusBlock.style.background = 'rgba(255, 77, 77, 0.15)';
-            statusBlock.style.borderColor = '#ff4d4d';
-            statusBlock.style.color = '#ff4d4d';
-            statusBlock.innerHTML = `🔒 Пробный период закончился. Оплатите подписку.`;
-            downloadBtn.classList.add('btn-disabled');
-            downloadBtn.innerHTML = '🔒 Скачивание заблокировано';
+            sessionBlock.style.display = 'none';
+            return;
         }
+
+        // ---- 4. АКТИВНА 30-МИНУТНАЯ СЕССИЯ ----
+        if (sessionEnd && sessionEnd > now) {
+            const remaining = sessionEnd - now;
+            const minutes = Math.floor(remaining / (1000 * 60));
+            const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+            
+            statusBlock.className = 'status-session';
+            statusBlock.innerHTML = `🎁 Тестовый доступ активен: <b>${minutes}м ${seconds}с</b>`;
+            downloadBtn.classList.remove('btn-disabled');
+            downloadBtn.innerHTML = '📥 Скачать Кошку';
+            sessionBlock.style.display = 'none';
+            return;
+        }
+
+        // ---- 5. ВСЁ ИСТЕКЛО — ПОКАЗЫВАЕМ КНОПКУ ПОЛУЧЕНИЯ 30 МИНУТ ----
+        statusBlock.className = 'status-locked';
+        statusBlock.innerHTML = `🔒 Пробный период закончился. Получите 30 минут теста или оплатите подписку.`;
+        downloadBtn.classList.add('btn-disabled');
+        downloadBtn.innerHTML = '🔒 Скачивание заблокировано';
+        sessionBlock.style.display = 'block';
     }
+
+    // Активация новой 30-минутной сессии
+    window.activateSession = function() {
+        const now = Date.now();
+        const lastActivate = parseInt(localStorage.getItem(LS_LAST_ACTIVATE) || '0', 10);
+        
+        // Защита от двойного клика
+        if (now - lastActivate < COOLDOWN_MS) {
+            return;
+        }
+        
+        localStorage.setItem(LS_SESSION_END, String(now + SESSION_MS));
+        localStorage.setItem(LS_LAST_ACTIVATE, String(now));
+        updateTimer();
+    };
 
     if (!timerInterval) {
         updateTimer();
@@ -192,10 +242,8 @@
             
             alert("✅ Транзакция отправлена! Ожидайте подтверждения сети (10-20 сек)...");
             
-            // Имитация ожидания ответа от сети (в реальности здесь нужно слушать вебхук)
             setTimeout(() => {
                 const now = Date.now();
-                // Даем 30 дней подписки
                 localStorage.setItem(LS_PRO, String(now + (30 * 24 * 60 * 60 * 1000)));
                 alert("🎉 Оплата получена! Подписка активирована на 30 дней.");
                 updateTimer();
